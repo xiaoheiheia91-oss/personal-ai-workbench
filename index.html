@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>个人AI工作台 v1.1</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+<h1>个人AI工作台</h1>
+<p class="sub">认知 → 系统 → 输出 → 现金流</p>
+
+<section>
+<h2>今日驾驶舱</h2>
+<textarea id="goal" placeholder="今日主线"></textarea>
+<button onclick="saveGoal()">保存</button>
+<p id="advice">AI建议：先确定唯一主线。</p>
+</section>
+
+<section>
+<h2>AI参谋</h2>
+<textarea id="ask" placeholder="输入你的问题"></textarea>
+<button onclick="ai()">分析</button>
+<p id="reply"></p>
+</section>
+
+<section>
+<h2>知识库</h2>
+<textarea id="note" placeholder="记录研究、想法、方法"></textarea>
+<button onclick="saveNote()">保存</button>
+<div id="notes"></div>
+</section>
+
+<section>
+<h2>决策中心</h2>
+<textarea id="decision" placeholder="记录你的决定、理由、风险"></textarea>
+<button onclick="saveDecision()">记录</button>
+<div id="decisions"></div>
+</section>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
