@@ -14,7 +14,8 @@ function backupState() {
     tasks: [{ id: "task-1", title: "完整任务", status: "completed" }],
     notes: [{ id: "note-1", title: "完整笔记", content: "正文", tags: ["backup"], status: "archived" }],
     decisions: [{ id: "decision-1", problem: "是否备份", choice: "是" }],
-    dailyReviews: [{ id: "review-1", date: "2026-08-12", tomorrowGoal: "继续验证" }]
+    dailyReviews: [{ id: "review-1", date: "2026-08-12", tomorrowGoal: "继续验证" }],
+    preservedRootField: { source: "future-compatible", values: [1, 2, 3] }
   };
 }
 
@@ -26,12 +27,29 @@ test("exports parseable JSON with complete detached Schema v3 data", function ()
 
   assert.equal(parsed.exportFormatVersion, 1);
   assert.equal(parsed.appVersion, "alpha-3.5");
+  assert.equal(parsed.schemaVersion, 3);
   assert.equal(parsed.exportedAt, "2026-08-12T03:04:05.000Z");
   assert.deepEqual(parsed.data, state);
+  assert.deepEqual(parsed.data.preservedRootField, state.preservedRootField);
   assert.equal(JSON.stringify(state), before);
   assert.notEqual(backup.data.notes, state.notes);
+  assert.notEqual(backup.data.preservedRootField, state.preservedRootField);
   assert.ok(Object.isFrozen(backup));
   assert.ok(Object.isFrozen(backup.data));
+});
+
+test("exposes version metadata, statistics, and raw data for future readers", function () {
+  const serialized = memory.serializeDataBackup(memory.createDataBackup(backupState(), "2026-08-12T03:04:05.000Z"));
+  const futureReader = JSON.parse(serialized);
+
+  assert.equal(futureReader.exportFormatVersion, 1);
+  assert.equal(futureReader.appVersion, "alpha-3.5");
+  assert.equal(futureReader.schemaVersion, futureReader.data.schemaVersion);
+  assert.equal(futureReader.recordCounts.total, 6);
+  memory.DATA_COLLECTIONS.forEach(function (key) {
+    assert.ok(Array.isArray(futureReader.data[key]), key);
+  });
+  assert.match(serialized, /\n  "exportFormatVersion"/);
 });
 
 test("counts every required Schema v3 collection before export", function () {

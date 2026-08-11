@@ -276,14 +276,14 @@
       if (!Array.isArray(state[key])) throw new Error("数据集合缺失或格式无效：" + key);
     });
 
-    const data = { schemaVersion: 3 };
-    DATA_COLLECTIONS.forEach(function (key) { data[key] = cloneJson(state[key]); });
+    const data = cloneJson(state);
     const timestamp = exportedAt ? new Date(exportedAt) : new Date();
     if (Number.isNaN(timestamp.getTime())) throw new Error("导出时间无效。");
 
     return deepFreeze({
       exportFormatVersion: 1,
       appVersion: "alpha-3.5",
+      schemaVersion: state.schemaVersion,
       exportedAt: timestamp.toISOString(),
       recordCounts: cloneJson(countDataRecords(state)),
       data: data
