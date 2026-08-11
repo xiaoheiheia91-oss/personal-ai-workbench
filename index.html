@@ -3,42 +3,95 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>个人AI工作台 v1.1</title>
+<title>Personal AI OS v2.0-alpha</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="app">
-<h1>个人AI工作台</h1>
-<p class="sub">认知 → 系统 → 输出 → 现金流</p>
+<main class="app">
+<header class="page-header">
+<h1>Personal AI OS</h1>
+<p class="sub">捕获想法，完成下一步。</p>
+</header>
 
-<section>
-<h2>今日驾驶舱</h2>
-<textarea id="goal" placeholder="今日主线"></textarea>
-<button onclick="saveGoal()">保存</button>
-<p id="advice">AI建议：先确定唯一主线。</p>
+<section aria-labelledby="dashboard-title">
+<div class="section-heading">
+<h2 id="dashboard-title">今日驾驶舱</h2>
+<span id="today-date" class="muted"></span>
+</div>
+<form id="goal-form">
+<label for="goal">今日主线</label>
+<textarea id="goal" placeholder="今天最重要的一件事" rows="2"></textarea>
+<button type="submit">保存主线</button>
+</form>
+<p id="goal-status" class="status" aria-live="polite"></p>
+<div class="summary-grid" aria-label="任务概览">
+<div><strong id="todo-count">0</strong><span>待完成</span></div>
+<div><strong id="completed-count">0</strong><span>已完成</span></div>
+<div><strong id="capture-count">0</strong><span>待处理捕获</span></div>
+</div>
+<div class="dashboard-columns">
+<div>
+<h3>今日任务</h3>
+<div id="dashboard-tasks" class="compact-list"></div>
+</div>
+<div>
+<h3>最近记录</h3>
+<div id="recent-records" class="compact-list"></div>
+</div>
+</div>
 </section>
 
-<section>
+<section aria-labelledby="capture-title">
+<div class="section-heading">
+<h2 id="capture-title">捕获箱</h2>
+<span class="muted">先记录，后整理</span>
+</div>
+<form id="capture-form">
+<label for="capture-content">快速记录</label>
+<textarea id="capture-content" placeholder="记录一个想法、待办或线索" required></textarea>
+<div class="form-row">
+<label>分类<select id="capture-category"><option value="idea">想法</option><option value="task">任务</option><option value="note">笔记</option><option value="decision">决策</option><option value="uncategorized">未分类</option></select></label>
+<label>来源<select id="capture-source"><option value="manual">手动</option><option value="voice">语音</option><option value="web_clip">网页剪藏</option><option value="ai">AI</option><option value="import">导入</option></select></label>
+</div>
+<button type="submit">保存到捕获箱</button>
+</form>
+<p id="capture-status" class="status" aria-live="polite"></p>
+<div id="captures" class="record-list"></div>
+</section>
+
+<section aria-labelledby="task-title">
+<div class="section-heading">
+<h2 id="task-title">任务</h2>
+<span class="muted">从捕获开始行动</span>
+</div>
+<div id="tasks" class="record-list"></div>
+</section>
+
+<section class="secondary-section" aria-labelledby="advisor-title">
 <h2>AI参谋</h2>
+<label for="ask">输入你的问题</label>
 <textarea id="ask" placeholder="输入你的问题"></textarea>
-<button onclick="ai()">分析</button>
+<button id="advisor-button" type="button">分析</button>
 <p id="reply"></p>
 </section>
 
-<section>
+<section class="secondary-section" aria-labelledby="note-title">
 <h2>知识库</h2>
+<label for="note">记录研究、想法、方法</label>
 <textarea id="note" placeholder="记录研究、想法、方法"></textarea>
-<button onclick="saveNote()">保存</button>
+<button id="note-button" type="button">保存</button>
 <div id="notes"></div>
 </section>
 
-<section>
+<section class="secondary-section" aria-labelledby="decision-title">
 <h2>决策中心</h2>
+<label for="decision">记录你的决定、理由、风险</label>
 <textarea id="decision" placeholder="记录你的决定、理由、风险"></textarea>
-<button onclick="saveDecision()">记录</button>
+<button id="decision-button" type="button">记录</button>
 <div id="decisions"></div>
 </section>
-</div>
+</main>
+<script src="storage.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
