@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Personal AI OS Mobile v2.0-alpha.3.5.2</title>
+<meta name="application-name" content="Personal AI OS">
+<meta name="theme-color" content="#07101d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="personal-ai-os-app-version" content="alpha-3.5.2-mobile">
+<meta name="personal-ai-os-core-version" content="alpha-3.5.2">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="../mobile.css">
+</head>
+<body>
+<main class="app">
+<header class="page-header">
+<h1>Personal AI OS</h1>
+<p class="mobile-build-info">Mobile PWA · alpha-3.5.2-mobile · Core alpha-3.5.2</p>
+<p class="sub">捕获想法，完成下一步。</p>
+<a class="memory-entry" href="#memory-center">查看个人记忆</a>
+</header>
+
+<section aria-labelledby="dashboard-title">
+<div class="section-heading">
+<h2 id="dashboard-title">今日驾驶舱</h2>
+<span id="today-date" class="muted"></span>
+</div>
+<form id="goal-form">
+<label for="goal">今日主线</label>
+<textarea id="goal" placeholder="今天最重要的一件事" rows="2"></textarea>
+<button type="submit">保存主线</button>
+</form>
+<p id="goal-status" class="status" aria-live="polite"></p>
+<div class="summary-grid" aria-label="任务概览">
+<div><strong id="todo-count">0</strong><span>待完成</span></div>
+<div><strong id="completed-count">0</strong><span>已完成</span></div>
+<div><strong id="capture-count">0</strong><span>待处理捕获</span></div>
+<div><strong id="note-count">0</strong><span>今日新增笔记</span></div>
+</div>
+<div class="dashboard-columns">
+<div>
+<h3>今日任务</h3>
+<div id="today-tasks" class="compact-list"></div>
+</div>
+<div>
+<h3>最近记录</h3>
+<div id="recent-records" class="compact-list"></div>
+</div>
+<div>
+<h3>最近笔记</h3>
+<div id="dashboard-notes" class="compact-list"></div>
+</div>
+</div>
+</section>
+
+<section aria-labelledby="capture-title">
+<div class="section-heading">
+<h2 id="capture-title">捕获箱</h2>
+<span class="muted">先记录，后整理</span>
+</div>
+<form id="capture-form">
+<label for="capture-content">快速记录</label>
+<textarea id="capture-content" placeholder="记录一个想法、待办或线索" required></textarea>
+<div class="form-row">
+<label>分类<select id="capture-category"><option value="idea">想法</option><option value="task">任务</option><option value="note">笔记</option><option value="decision">决策</option><option value="uncategorized">未分类</option></select></label>
+<label>来源<select id="capture-source"><option value="manual">手动</option><option value="voice">语音</option><option value="web_clip">网页剪藏</option><option value="ai">AI</option><option value="import">导入</option></select></label>
+</div>
+<button type="submit">保存到捕获箱</button>
+</form>
+<p id="capture-status" class="status" aria-live="polite"></p>
+<div class="lifecycle-controls">
+<label for="capture-status-filter">状态筛选<select id="capture-status-filter"><option value="">全部状态</option><option value="inbox">待整理</option><option value="converted">已转换</option><option value="archived">已归档</option></select></label>
+</div>
+<div id="captures" class="record-list"></div>
+</section>
+
+<section aria-labelledby="task-title">
+<div class="section-heading">
+<h2 id="task-title">任务</h2>
+<span class="muted">全部状态均可回顾</span>
+</div>
+<div class="lifecycle-controls">
+<label for="task-status-filter">状态筛选<select id="task-status-filter"><option value="">全部状态</option><option value="active">未结束（全部）</option><option value="todo">待开始</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select></label>
+</div>
+<div class="task-group">
+<h3>今日任务</h3>
+<div id="today-tasks-list" class="record-list"></div>
+</div>
+<div class="task-group">
+<h3>待处理任务</h3>
+<div id="pending-tasks" class="record-list"></div>
+</div>
+<div class="task-group">
+<h3>已完成任务</h3>
+<div id="completed-tasks" class="record-list"></div>
+</div>
+<div class="task-group">
+<h3>已取消任务</h3>
+<div id="cancelled-tasks" class="record-list"></div>
+</div>
+</section>
+
+<section aria-labelledby="review-title">
+<div class="section-heading">
+<h2 id="review-title">每日回顾</h2>
+<span class="muted">收尾今天，准备明天</span>
+</div>
+<div class="review-columns">
+<div><h3>今日完成</h3><div id="review-completed" class="compact-list"></div></div>
+<div><h3>今日未完成</h3><div id="review-incomplete" class="compact-list"></div></div>
+<div><h3>今日新增捕获</h3><div id="review-captures" class="compact-list"></div></div>
+</div>
+<form id="review-form">
+<label for="tomorrow-goal">明日主线</label>
+<textarea id="tomorrow-goal" rows="2" placeholder="写下明天最重要的一件事"></textarea>
+<button type="submit">保存明日主线</button>
+</form>
+<p id="review-status" class="status" aria-live="polite"></p>
+<div class="section-heading history-heading">
+<h3>复盘历史</h3>
+<label for="review-range-filter">记录范围<select id="review-range-filter"><option value="">全部历史</option><option value="today">仅今天</option></select></label>
+</div>
+<div id="review-history" class="record-list"></div>
+</section>
+
+<section id="memory-center" aria-labelledby="memory-title">
+<div class="section-heading">
+<div><h2 id="memory-title">个人记忆</h2><p class="muted memory-intro">全部记录保存在本地，可随时搜索和回顾。</p></div>
+<span id="memory-count" class="muted" aria-live="polite"></span>
+</div>
+<div class="memory-controls">
+<label for="memory-search">搜索全部记录<input id="memory-search" type="search" placeholder="搜索标题、正文、标签或状态"></label>
+<label for="memory-type">记录类型<select id="memory-type"><option value="">全部记录</option><option value="goal">目标</option><option value="capture">捕获</option><option value="task">任务</option><option value="note">笔记</option><option value="decision">决策</option><option value="review">复盘</option></select></label>
+<label for="memory-order">时间排序<select id="memory-order"><option value="newest">最新在前</option><option value="oldest">最早在前</option></select></label>
+</div>
+<div class="memory-backup">
+<div><h3>数据备份</h3><p id="memory-backup-count" class="muted"></p><p class="muted memory-backup-note">备份保存在你的设备上，不会上传到网络。</p></div>
+<button id="memory-export-button" type="button">导出 JSON 备份</button>
+</div>
+<p id="memory-export-status" class="status" aria-live="polite"></p>
+<div class="memory-restore">
+<div><h3>数据恢复</h3><p class="muted memory-backup-note">仅空数据空间可以恢复；不会覆盖或自动合并现有记录。</p></div>
+<label class="memory-file-button" for="memory-restore-file">选择 JSON 备份<input id="memory-restore-file" type="file" accept=".json,application/json"></label>
+</div>
+<div id="memory-restore-preview" class="memory-restore-preview" hidden>
+<p id="memory-restore-source"></p>
+<p id="memory-restore-created"></p>
+<p id="memory-restore-counts"></p>
+<button id="memory-restore-button" type="button" disabled>确认恢复</button>
+</div>
+<p id="memory-restore-status" class="status" aria-live="polite"></p>
+<div id="memory-records" class="record-list" aria-live="polite"></div>
+</section>
+
+<section class="secondary-section" aria-labelledby="advisor-title">
+<h2>AI参谋</h2>
+<label for="ask">输入你的问题</label>
+<textarea id="ask" placeholder="输入你的问题"></textarea>
+<button id="advisor-button" type="button">分析</button>
+<p id="reply"></p>
+</section>
+
+<section aria-labelledby="note-title">
+<div class="section-heading">
+<h2 id="note-title">知识库</h2>
+<button id="note-new-button" type="button">新建笔记</button>
+</div>
+<div class="knowledge-controls lifecycle-note-controls">
+<label for="note-search">搜索笔记<input id="note-search" type="search" placeholder="搜索标题、正文或标签"></label>
+<label for="note-tag-filter">标签筛选<select id="note-tag-filter"><option value="">全部标签</option></select></label>
+<label for="note-status-filter">状态筛选<select id="note-status-filter"><option value="">全部状态</option><option value="active">使用中</option><option value="archived">已归档</option></select></label>
+</div>
+<div id="notes"></div>
+</section>
+
+<section class="secondary-section" aria-labelledby="decision-title">
+<div class="section-heading"><h2 id="decision-title">决策中心</h2><label for="decision-status-filter">状态筛选<select id="decision-status-filter"><option value="">全部状态</option><option value="open">待复盘</option><option value="reviewed">已复盘</option></select></label></div>
+<label for="decision">记录你的决定、理由、风险</label>
+<textarea id="decision" placeholder="记录你的决定、理由、风险"></textarea>
+<button id="decision-button" type="button">记录</button>
+<div id="decisions"></div>
+</section>
+</main>
+<dialog id="conversion-dialog" class="editor-dialog">
+<form id="conversion-form" method="dialog">
+<div class="section-heading"><h2>转换为任务</h2><button type="button" class="icon-button" data-close-dialog="conversion-dialog" aria-label="关闭">×</button></div>
+<input type="hidden" id="conversion-capture-id">
+<label for="conversion-title">任务标题</label>
+<input id="conversion-title" type="text" required>
+<label for="conversion-priority">优先级</label>
+<select id="conversion-priority"><option value="high">高</option><option value="medium" selected>中</option><option value="low">低</option></select>
+<label for="conversion-due-date">截止日期</label>
+<input id="conversion-due-date" type="date">
+<label class="checkbox-label"><input id="conversion-today" type="checkbox"> 加入今日任务</label>
+<p id="conversion-status" class="status" aria-live="polite"></p>
+<div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog="conversion-dialog">取消</button><button type="submit">确认转换</button></div>
+</form>
+</dialog>
+<dialog id="note-conversion-dialog" class="editor-dialog">
+<form id="note-conversion-form" method="dialog">
+<div class="section-heading"><h2>转换为笔记</h2><button type="button" class="icon-button" data-close-dialog="note-conversion-dialog" aria-label="关闭">×</button></div>
+<input type="hidden" id="note-conversion-capture-id">
+<label for="note-conversion-title">标题</label>
+<input id="note-conversion-title" type="text" required>
+<label for="note-conversion-content">正文</label>
+<textarea id="note-conversion-content" required></textarea>
+<label for="note-conversion-tags">标签</label>
+<input id="note-conversion-tags" type="text" placeholder="用逗号分隔，例如：产品, 想法">
+<label for="note-conversion-goal">关联目标</label>
+<select id="note-conversion-goal"></select>
+<label for="note-conversion-project">关联项目</label>
+<input id="note-conversion-project" type="text" placeholder="项目名称或预留 ID">
+<p id="note-conversion-status" class="status" aria-live="polite"></p>
+<div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog="note-conversion-dialog">取消</button><button type="submit">确认保存</button></div>
+</form>
+</dialog>
+<dialog id="note-dialog" class="editor-dialog">
+<form id="note-form" method="dialog">
+<div class="section-heading"><h2>笔记</h2><button type="button" class="icon-button" data-close-dialog="note-dialog" aria-label="关闭">×</button></div>
+<input type="hidden" id="note-id">
+<label for="note-title-input">标题</label>
+<input id="note-title-input" type="text" required>
+<label for="note-content-input">正文</label>
+<textarea id="note-content-input" required></textarea>
+<label for="note-tags-input">标签</label>
+<input id="note-tags-input" type="text" placeholder="用逗号分隔，例如：研究, 方法">
+<label for="note-goal-input">关联目标</label>
+<select id="note-goal-input"></select>
+<label for="note-project-input">关联项目</label>
+<input id="note-project-input" type="text" placeholder="项目名称或预留 ID">
+<p id="note-editor-status" class="status" aria-live="polite"></p>
+<div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog="note-dialog">取消</button><button type="submit">保存笔记</button></div>
+</form>
+</dialog>
+<dialog id="task-dialog" class="editor-dialog">
+<form id="task-form" method="dialog">
+<div class="section-heading"><h2>编辑任务</h2><button type="button" class="icon-button" data-close-dialog="task-dialog" aria-label="关闭">×</button></div>
+<input type="hidden" id="task-id">
+<label for="task-title-input">任务标题</label>
+<input id="task-title-input" type="text" required>
+<label for="task-priority">优先级</label>
+<select id="task-priority"><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select>
+<label for="task-due-date">截止日期</label>
+<input id="task-due-date" type="date">
+<label for="task-status">状态</label>
+<select id="task-status"><option value="todo">待开始</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select>
+<label class="checkbox-label"><input id="task-today" type="checkbox"> 加入今日任务</label>
+<p id="task-editor-status" class="status" aria-live="polite"></p>
+<div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog="task-dialog">取消</button><button type="submit">保存修改</button></div>
+</form>
+</dialog>
+<script src="storage.js"></script>
+<script src="memory.js"></script>
+<script src="app.js"></script>
+<script src="pwa-register.js"></script>
+</body>
+</html>
