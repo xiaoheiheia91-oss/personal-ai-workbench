@@ -1,6 +1,6 @@
 {
-  "rewrites": [
-    { "source": "/", "destination": "/app/index.html" }
+  "redirects": [
+    { "source": "/", "destination": "/app/index.html", "permanent": false }
   ],
   "headers": [
     { "source": "/service-worker.js", "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] },
