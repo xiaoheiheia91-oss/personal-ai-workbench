@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Personal AI OS v2.0-alpha</title>
+<title>Personal AI OS v2.0-alpha.3</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -28,6 +28,7 @@
 <div><strong id="todo-count">0</strong><span>待完成</span></div>
 <div><strong id="completed-count">0</strong><span>已完成</span></div>
 <div><strong id="capture-count">0</strong><span>待处理捕获</span></div>
+<div><strong id="note-count">0</strong><span>今日新增笔记</span></div>
 </div>
 <div class="dashboard-columns">
 <div>
@@ -37,6 +38,10 @@
 <div>
 <h3>最近记录</h3>
 <div id="recent-records" class="compact-list"></div>
+</div>
+<div>
+<h3>最近笔记</h3>
+<div id="dashboard-notes" class="compact-list"></div>
 </div>
 </div>
 </section>
@@ -104,11 +109,15 @@
 <p id="reply"></p>
 </section>
 
-<section class="secondary-section" aria-labelledby="note-title">
-<h2>知识库</h2>
-<label for="note">记录研究、想法、方法</label>
-<textarea id="note" placeholder="记录研究、想法、方法"></textarea>
-<button id="note-button" type="button">保存</button>
+<section aria-labelledby="note-title">
+<div class="section-heading">
+<h2 id="note-title">知识库</h2>
+<button id="note-new-button" type="button">新建笔记</button>
+</div>
+<div class="knowledge-controls">
+<label for="note-search">搜索笔记<input id="note-search" type="search" placeholder="搜索标题、正文或标签"></label>
+<label for="note-tag-filter">标签筛选<select id="note-tag-filter"><option value="">全部标签</option></select></label>
+</div>
 <div id="notes"></div>
 </section>
 
@@ -133,6 +142,42 @@
 <label class="checkbox-label"><input id="conversion-today" type="checkbox"> 加入今日任务</label>
 <p id="conversion-status" class="status" aria-live="polite"></p>
 <div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog="conversion-dialog">取消</button><button type="submit">确认转换</button></div>
+</form>
+</dialog>
+<dialog id="note-conversion-dialog" class="editor-dialog">
+<form id="note-conversion-form" method="dialog">
+<div class="section-heading"><h2>转换为笔记</h2><button type="button" class="icon-button" data-close-dialog="note-conversion-dialog" aria-label="关闭">×</button></div>
+<input type="hidden" id="note-conversion-capture-id">
+<label for="note-conversion-title">标题</label>
+<input id="note-conversion-title" type="text" required>
+<label for="note-conversion-content">正文</label>
+<textarea id="note-conversion-content" required></textarea>
+<label for="note-conversion-tags">标签</label>
+<input id="note-conversion-tags" type="text" placeholder="用逗号分隔，例如：产品, 想法">
+<label for="note-conversion-goal">关联目标</label>
+<select id="note-conversion-goal"></select>
+<label for="note-conversion-project">关联项目</label>
+<input id="note-conversion-project" type="text" placeholder="项目名称或预留 ID">
+<p id="note-conversion-status" class="status" aria-live="polite"></p>
+<div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog="note-conversion-dialog">取消</button><button type="submit">确认保存</button></div>
+</form>
+</dialog>
+<dialog id="note-dialog" class="editor-dialog">
+<form id="note-form" method="dialog">
+<div class="section-heading"><h2>笔记</h2><button type="button" class="icon-button" data-close-dialog="note-dialog" aria-label="关闭">×</button></div>
+<input type="hidden" id="note-id">
+<label for="note-title-input">标题</label>
+<input id="note-title-input" type="text" required>
+<label for="note-content-input">正文</label>
+<textarea id="note-content-input" required></textarea>
+<label for="note-tags-input">标签</label>
+<input id="note-tags-input" type="text" placeholder="用逗号分隔，例如：研究, 方法">
+<label for="note-goal-input">关联目标</label>
+<select id="note-goal-input"></select>
+<label for="note-project-input">关联项目</label>
+<input id="note-project-input" type="text" placeholder="项目名称或预留 ID">
+<p id="note-editor-status" class="status" aria-live="polite"></p>
+<div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog="note-dialog">取消</button><button type="submit">保存笔记</button></div>
 </form>
 </dialog>
 <dialog id="task-dialog" class="editor-dialog">

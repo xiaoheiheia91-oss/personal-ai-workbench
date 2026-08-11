@@ -15,9 +15,11 @@ document.addEventListener("DOMContentLoaded", function () {
     pendingTasks: document.getElementById("pending-tasks"),
     completedTasks: document.getElementById("completed-tasks"),
     recentRecords: document.getElementById("recent-records"),
+    dashboardNotes: document.getElementById("dashboard-notes"),
     todoCount: document.getElementById("todo-count"),
     completedCount: document.getElementById("completed-count"),
     captureCount: document.getElementById("capture-count"),
+    noteCount: document.getElementById("note-count"),
     todayDate: document.getElementById("today-date"),
     reviewCompleted: document.getElementById("review-completed"),
     reviewIncomplete: document.getElementById("review-incomplete"),
@@ -42,11 +44,30 @@ document.addEventListener("DOMContentLoaded", function () {
     conversionDueDate: document.getElementById("conversion-due-date"),
     conversionToday: document.getElementById("conversion-today"),
     conversionStatus: document.getElementById("conversion-status"),
+    noteConversionDialog: document.getElementById("note-conversion-dialog"),
+    noteConversionForm: document.getElementById("note-conversion-form"),
+    noteConversionCaptureId: document.getElementById("note-conversion-capture-id"),
+    noteConversionTitle: document.getElementById("note-conversion-title"),
+    noteConversionContent: document.getElementById("note-conversion-content"),
+    noteConversionTags: document.getElementById("note-conversion-tags"),
+    noteConversionGoal: document.getElementById("note-conversion-goal"),
+    noteConversionProject: document.getElementById("note-conversion-project"),
+    noteConversionStatus: document.getElementById("note-conversion-status"),
     advisorButton: document.getElementById("advisor-button"),
     reply: document.getElementById("reply"),
-    noteButton: document.getElementById("note-button"),
-    note: document.getElementById("note"),
+    noteSearch: document.getElementById("note-search"),
+    noteTagFilter: document.getElementById("note-tag-filter"),
+    noteNewButton: document.getElementById("note-new-button"),
     notes: document.getElementById("notes"),
+    noteDialog: document.getElementById("note-dialog"),
+    noteForm: document.getElementById("note-form"),
+    noteId: document.getElementById("note-id"),
+    noteTitle: document.getElementById("note-title-input"),
+    noteContent: document.getElementById("note-content-input"),
+    noteTags: document.getElementById("note-tags-input"),
+    noteGoal: document.getElementById("note-goal-input"),
+    noteProject: document.getElementById("note-project-input"),
+    noteEditorStatus: document.getElementById("note-editor-status"),
     decisionButton: document.getElementById("decision-button"),
     decision: document.getElementById("decision"),
     decisions: document.getElementById("decisions")
@@ -172,24 +193,137 @@ document.addEventListener("DOMContentLoaded", function () {
       body.appendChild(meta);
       item.appendChild(body);
       if (capture.status === "inbox") {
-        item.appendChild(createButton("转为任务", function () { openConversionDialog(capture); }));
+        const actions = document.createElement("div");
+        actions.className = "record-actions";
+        actions.appendChild(createButton("转为任务", function () { openConversionDialog(capture); }));
+        actions.appendChild(createButton("转为笔记", function () { openNoteConversionDialog(capture); }));
+        actions.appendChild(createButton("归档", function () {
+          storage.archiveCapture(capture.id);
+          render();
+        }));
+        item.appendChild(actions);
       } else {
         const badge = document.createElement("span");
         badge.className = "badge";
-        badge.textContent = "已转换";
+        badge.textContent = capture.status === "archived" ? "已归档" : "已转换";
         item.appendChild(badge);
       }
       elements.captures.appendChild(item);
     });
   }
 
+  function addGoalOptions(select, selectedGoal) {
+    clearChildren(select);
+    const emptyOption = document.createElement("option");
+    emptyOption.value = "";
+    emptyOption.textContent = "不关联目标";
+    select.appendChild(emptyOption);
+    storage.getState().goals.forEach(function (goal) {
+      const option = document.createElement("option");
+      option.value = goal.id;
+      option.textContent = goal.title;
+      option.selected = goal.id === selectedGoal;
+      select.appendChild(option);
+    });
+  }
+
+  function appendTagList(element, tags) {
+    if (!tags.length) return;
+    const list = document.createElement("div");
+    list.className = "tag-list";
+    tags.forEach(function (tag) {
+      const badge = document.createElement("span");
+      badge.className = "tag";
+      badge.textContent = tag;
+      list.appendChild(badge);
+    });
+    element.appendChild(list);
+  }
+
+  function openNoteDialog(note) {
+    const current = note || {};
+    elements.noteId.value = current.id || "";
+    elements.noteTitle.value = current.title || "";
+    elements.noteContent.value = current.content || "";
+    elements.noteTags.value = current.tags ? current.tags.join(", ") : "";
+    elements.noteProject.value = current.relatedProject || "";
+    addGoalOptions(elements.noteGoal, current.relatedGoal || "");
+    setStatus(elements.noteEditorStatus, "", false);
+    elements.noteDialog.showModal();
+  }
+
+  function openNoteConversionDialog(capture) {
+    elements.noteConversionCaptureId.value = capture.id;
+    elements.noteConversionTitle.value = (capture.content || "").slice(0, 30);
+    elements.noteConversionContent.value = capture.content || "";
+    elements.noteConversionTags.value = "";
+    elements.noteConversionProject.value = capture.relatedProject || "";
+    addGoalOptions(elements.noteConversionGoal, capture.relatedGoal || "");
+    setStatus(elements.noteConversionStatus, "", false);
+    elements.noteConversionDialog.showModal();
+  }
+
   function renderNotes(state) {
     clearChildren(elements.notes);
-    state.notes.slice().reverse().forEach(function (note) {
-      const item = document.createElement("div");
-      item.className = "item";
-      item.textContent = note.content;
+    const keyword = elements.noteSearch.value.trim().toLowerCase();
+    const tag = elements.noteTagFilter.value;
+    const notes = state.notes.filter(function (note) {
+      if (note.status === "archived") return false;
+      const searchable = (note.title + " " + note.content + " " + note.tags.join(" ")).toLowerCase();
+      return (!keyword || searchable.includes(keyword)) && (!tag || note.tags.includes(tag));
+    }).sort(function (a, b) { return b.updatedAt.localeCompare(a.updatedAt); });
+
+    if (!notes.length) {
+      elements.notes.appendChild(emptyState(keyword || tag ? "没有符合条件的笔记。" : "还没有笔记。可以新建笔记或从捕获箱转换。"));
+      return;
+    }
+
+    notes.forEach(function (note) {
+      const item = document.createElement("article");
+      item.className = "record-item note-item";
+      const body = document.createElement("div");
+      const title = document.createElement("h3");
+      title.textContent = note.title;
+      body.appendChild(title);
+      const content = document.createElement("p");
+      content.className = "note-preview";
+      content.textContent = note.content;
+      body.appendChild(content);
+      appendTagList(body, note.tags);
+      const meta = document.createElement("p");
+      meta.className = "meta";
+      meta.textContent = "更新于 " + formatDate(note.updatedAt);
+      body.appendChild(meta);
+      item.appendChild(body);
+      const actions = document.createElement("div");
+      actions.className = "record-actions";
+      actions.appendChild(createButton("编辑", function () { openNoteDialog(note); }));
+      actions.appendChild(createButton("归档", function () { storage.archiveNote(note.id); render(); }));
+      actions.appendChild(createButton("删除", function () {
+        if (window.confirm("删除这条笔记？此操作无法恢复。")) {
+          storage.deleteNote(note.id);
+          render();
+        }
+      }));
+      item.appendChild(actions);
       elements.notes.appendChild(item);
+    });
+  }
+
+  function renderNoteTagFilter(notes) {
+    const selected = elements.noteTagFilter.value;
+    const tags = Array.from(new Set(notes.filter(function (note) { return note.status === "active"; }).flatMap(function (note) { return note.tags; }))).sort();
+    clearChildren(elements.noteTagFilter);
+    const all = document.createElement("option");
+    all.value = "";
+    all.textContent = "全部标签";
+    elements.noteTagFilter.appendChild(all);
+    tags.forEach(function (tag) {
+      const option = document.createElement("option");
+      option.value = tag;
+      option.textContent = tag;
+      option.selected = tag === selected;
+      elements.noteTagFilter.appendChild(option);
     });
   }
 
@@ -234,6 +368,20 @@ document.addEventListener("DOMContentLoaded", function () {
       item.className = "compact-record";
       item.textContent = task.title + " · " + taskPriorityLabel(task.priority);
       elements.dashboardTodayTasks.appendChild(item);
+    });
+  }
+
+  function renderDashboardNotes(notes) {
+    clearChildren(elements.dashboardNotes);
+    if (!notes.length) {
+      elements.dashboardNotes.appendChild(emptyState("还没有沉淀笔记。"));
+      return;
+    }
+    notes.slice(0, 3).forEach(function (note) {
+      const item = document.createElement("p");
+      item.className = "compact-record";
+      item.textContent = note.title + " · " + formatDate(note.updatedAt);
+      elements.dashboardNotes.appendChild(item);
     });
   }
 
@@ -294,12 +442,15 @@ document.addEventListener("DOMContentLoaded", function () {
     const todayCompleted = completedTasks.filter(completedToday);
     const todayCaptures = state.captures.filter(createdToday);
     const openCaptures = state.captures.filter(function (capture) { return capture.status === "inbox"; });
+    const todayNotes = state.notes.filter(function (note) { return createdToday(note); });
+    const recentNotes = state.notes.filter(function (note) { return note.status === "active"; }).sort(function (a, b) { return b.updatedAt.localeCompare(a.updatedAt); });
 
     elements.todayDate.textContent = new Intl.DateTimeFormat("zh-CN", { dateStyle: "full" }).format(new Date());
     elements.goal.value = goal ? goal.title : "";
     elements.todoCount.textContent = String(todayTasks.length);
     elements.completedCount.textContent = String(todayCompleted.length);
-    elements.captureCount.textContent = String(todayCaptures.length);
+    elements.captureCount.textContent = String(openCaptures.length);
+    elements.noteCount.textContent = String(todayNotes.length);
 
     renderDashboardTasks(todayTasks);
     renderTaskList(elements.todayTasks, todayTasks, "今天还没有安排任务。可从捕获箱转换并加入今日任务。");
@@ -307,7 +458,9 @@ document.addEventListener("DOMContentLoaded", function () {
     renderTaskList(elements.completedTasks, completedTasks, "还没有已完成任务。");
     renderCaptures(state.captures);
     renderRecentRecords(state.captures, completedTasks);
+    renderDashboardNotes(recentNotes);
     renderReview(todayCompleted, todayTasks, todayCaptures);
+    renderNoteTagFilter(state.notes);
     renderNotes(state);
     renderDecisions(state);
 
@@ -354,6 +507,24 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
+  elements.noteConversionForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    try {
+      storage.convertCaptureToNote(elements.noteConversionCaptureId.value, {
+        title: elements.noteConversionTitle.value,
+        content: elements.noteConversionContent.value,
+        tags: elements.noteConversionTags.value,
+        relatedGoal: elements.noteConversionGoal.value || null,
+        relatedProject: elements.noteConversionProject.value || null
+      });
+      closeDialog(elements.noteConversionDialog);
+      setStatus(elements.captureStatus, "已转换为笔记。", false);
+      render();
+    } catch (error) {
+      setStatus(elements.noteConversionStatus, error.message, true);
+    }
+  });
+
   elements.taskForm.addEventListener("submit", function (event) {
     event.preventDefault();
     try {
@@ -378,6 +549,30 @@ document.addEventListener("DOMContentLoaded", function () {
     render();
   });
 
+  elements.noteNewButton.addEventListener("click", function () { openNoteDialog(); });
+
+  elements.noteForm.addEventListener("submit", function (event) {
+    event.preventDefault();
+    try {
+      const input = {
+        title: elements.noteTitle.value,
+        content: elements.noteContent.value,
+        tags: elements.noteTags.value,
+        relatedGoal: elements.noteGoal.value || null,
+        relatedProject: elements.noteProject.value || null
+      };
+      if (elements.noteId.value) storage.updateNote(elements.noteId.value, input);
+      else storage.createNote(input);
+      closeDialog(elements.noteDialog);
+      render();
+    } catch (error) {
+      setStatus(elements.noteEditorStatus, error.message, true);
+    }
+  });
+
+  elements.noteSearch.addEventListener("input", render);
+  elements.noteTagFilter.addEventListener("change", render);
+
   document.querySelectorAll("[data-close-dialog]").forEach(function (button) {
     button.addEventListener("click", function () {
       closeDialog(document.getElementById(button.dataset.closeDialog));
@@ -386,16 +581,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   elements.advisorButton.addEventListener("click", function () {
     elements.reply.textContent = "AI 分析将在后续阶段接入。当前可以先整理今日任务和捕获内容。";
-  });
-
-  elements.noteButton.addEventListener("click", function () {
-    try {
-      storage.createNote(elements.note.value);
-      elements.note.value = "";
-      render();
-    } catch (error) {
-      elements.notes.textContent = error.message;
-    }
   });
 
   elements.decisionButton.addEventListener("click", function () {

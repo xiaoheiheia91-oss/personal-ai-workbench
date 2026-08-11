@@ -1,4 +1,4 @@
-# v2.0-alpha.2 Manual Checklist
+# v2.0-alpha.3 Manual Checklist
 
 1. Open `index.html` or the deployed Vercel URL.
 2. Save a daily goal, refresh the page, and verify the goal remains visible.
@@ -12,3 +12,10 @@
 10. Save a tomorrow goal, refresh the page, and verify it remains in the daily review.
 11. Verify old `localStorage.goal`, `notes`, and `decisions` content is still visible after migration.
 12. Check the layout at a narrow mobile viewport and confirm there is no horizontal overflow.
+13. Create a note with a title, body, tags, goal, and project context; refresh and verify it remains.
+14. Edit that note and verify its title, content, tags, and updated timestamp change.
+15. Search by note title, body text, and tag; verify matching notes appear.
+16. Select a tag filter and verify only notes with that tag appear.
+17. Convert an inbox capture to a note, then verify the capture is marked as converted and the note retains its source.
+18. Archive and delete notes; verify archived notes leave the active list and deleted notes do not return after refresh.
+19. In the browser console, call `PersonalAIStorage.getAIContext({ scope: "dashboard" })` and `PersonalAIStorage.getAIContext({ scope: "all" })`; verify both return serializable JSON without modifying data.

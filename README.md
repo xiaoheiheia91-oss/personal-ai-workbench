@@ -1,4 +1,4 @@
-# Personal AI OS v2.0-alpha.2
+# Personal AI OS v2.0-alpha.3
 
 当前阶段实现个人 AI OS 的最小闭环：
 
@@ -11,10 +11,14 @@
 - 转换捕获时编辑任务信息并加入今日任务
 - 每日回顾和明日主线
 - 在首页查看任务统计和最近记录
+- 结构化知识库：标题、正文、标签、搜索和筛选
+- 从捕获箱转换为笔记
+- 笔记编辑、归档和删除
+- 面向未来 AI 参谋的只读上下文出口
 
 ## 数据存储
 
-本阶段保持纯静态部署，数据由 `storage.js` 写入浏览器 `localStorage`。schema 已升级为 v2：旧任务会补齐 `today`、`todayDate`、`updatedAt` 和 `dueDate`，并新增 `dailyReviews`。数据不会自动跨设备同步。
+本阶段保持纯静态部署，数据由 `storage.js` 写入浏览器 `localStorage`。schema 已升级为 v3：旧笔记会补齐标题、状态、来源、关联上下文和更新时间；数据结构新增 `getAIContext()`，用于返回经过筛选的只读 JSON 上下文。数据不会自动跨设备同步。
 
 ## 本地与 Vercel 部署
 

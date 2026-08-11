@@ -1,6 +1,6 @@
 (function () {
   const STORAGE_KEY = "personal-ai-os.v2-alpha";
-  const SCHEMA_VERSION = 2;
+  const SCHEMA_VERSION = 3;
   const CAPTURE_SOURCES = ["manual", "voice", "web_clip", "ai", "import"];
   const CAPTURE_CATEGORIES = ["idea", "task", "note", "decision", "uncategorized"];
   const TASK_PRIORITIES = ["high", "medium", "low"];
@@ -26,6 +26,17 @@
 
   function isDateKey(value) {
     return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+  }
+
+  function normalizeTags(value) {
+    const values = Array.isArray(value) ? value : String(value || "").split(",");
+    return values.map(function (tag) { return String(tag).trim(); }).filter(Boolean).filter(function (tag, index, list) {
+      return list.indexOf(tag) === index;
+    });
+  }
+
+  function noteTitle(content) {
+    return String(content || "").trim().slice(0, 30) || "未命名笔记";
   }
 
   function emptyState() {
@@ -65,13 +76,20 @@
     state.notes = readLegacyArray("notes").map(function (content) {
       return {
         id: createId("note-"),
+        title: noteTitle(content),
         content: String(content),
         tags: [],
+        status: "active",
+        sourceCaptureId: null,
+        relatedGoal: null,
+        relatedProject: null,
         createdAt: migrationTime,
+        updatedAt: migrationTime,
         context: {
           sourceCaptureId: null,
-          relatedGoal: null,
-          relatedProject: null
+          relatedTaskIds: [],
+          relatedDecisionIds: [],
+          source: "import"
         }
       };
     });
@@ -122,7 +140,27 @@
       capture.createdAt = capture.createdAt || now();
       capture.relatedGoal = capture.relatedGoal || null;
       capture.relatedProject = capture.relatedProject || null;
-      capture.context = capture.context || { convertedTaskId: null };
+      capture.context = capture.context || { convertedTaskId: null, convertedNoteId: null };
+      if (!Object.prototype.hasOwnProperty.call(capture.context, "convertedNoteId")) capture.context.convertedNoteId = null;
+    });
+    state.notes = state.notes.map(function (note) {
+      const content = String(note.content || "");
+      note.id = note.id || createId("note-");
+      note.title = String(note.title || noteTitle(content));
+      note.content = content;
+      note.tags = normalizeTags(note.tags);
+      note.status = note.status === "archived" ? "archived" : "active";
+      note.sourceCaptureId = note.sourceCaptureId || (note.context && note.context.sourceCaptureId) || null;
+      note.relatedGoal = note.relatedGoal || (note.context && note.context.relatedGoal) || null;
+      note.relatedProject = note.relatedProject || (note.context && note.context.relatedProject) || null;
+      note.createdAt = note.createdAt || now();
+      note.updatedAt = note.updatedAt || note.createdAt;
+      note.context = note.context || {};
+      note.context.sourceCaptureId = note.sourceCaptureId;
+      note.context.relatedTaskIds = Array.isArray(note.context.relatedTaskIds) ? note.context.relatedTaskIds : [];
+      note.context.relatedDecisionIds = Array.isArray(note.context.relatedDecisionIds) ? note.context.relatedDecisionIds : [];
+      note.context.source = note.context.source || "manual";
+      return note;
     });
     state.goals.forEach(function (goal) {
       goal.progress = typeof goal.progress === "number" ? goal.progress : 0;
@@ -148,6 +186,16 @@
       const recovered = migrateLegacyData();
       saveState(recovered);
       return recovered;
+    }
+  }
+
+  function getReadOnlyState() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return migrateLegacyData();
+    try {
+      return normalizeState(JSON.parse(raw));
+    } catch {
+      return migrateLegacyData();
     }
   }
 
@@ -187,7 +235,8 @@
       relatedProject: input.relatedProject || null,
       source: CAPTURE_SOURCES.includes(input.source) ? input.source : "manual",
       context: {
-        convertedTaskId: null
+        convertedTaskId: null,
+        convertedNoteId: null
       }
     };
 
@@ -201,7 +250,8 @@
     const capture = state.captures.find(function (item) { return item.id === captureId; });
     if (!capture) throw new Error("未找到该捕获记录。");
     if (capture.status === "converted") throw new Error("该捕获记录已经转换为任务。");
-    capture.context = capture.context || { convertedTaskId: null };
+    capture.context = capture.context || { convertedTaskId: null, convertedNoteId: null };
+    if (!Object.prototype.hasOwnProperty.call(capture.context, "convertedNoteId")) capture.context.convertedNoteId = null;
 
     const task = {
       id: createId("task-"),
@@ -293,18 +343,198 @@
     return review;
   }
 
-  function createNote(content) {
-    const value = String(content || "").trim();
+  function createNote(input) {
+    const values = typeof input === "string" ? { content: input } : (input || {});
+    const value = String(values.content || "").trim();
     if (!value) throw new Error("笔记内容不能为空。");
     const state = getState();
-    state.notes.push({
+    const timestamp = now();
+    const note = {
       id: createId("note-"),
+      title: String(values.title || noteTitle(value)).trim() || noteTitle(value),
       content: value,
-      tags: [],
-      createdAt: now(),
-      context: { sourceCaptureId: null, relatedGoal: null, relatedProject: null }
-    });
+      tags: normalizeTags(values.tags),
+      status: "active",
+      sourceCaptureId: values.sourceCaptureId || null,
+      relatedGoal: values.relatedGoal || null,
+      relatedProject: values.relatedProject || null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      context: {
+        sourceCaptureId: values.sourceCaptureId || null,
+        relatedTaskIds: Array.isArray(values.relatedTaskIds) ? values.relatedTaskIds : [],
+        relatedDecisionIds: Array.isArray(values.relatedDecisionIds) ? values.relatedDecisionIds : [],
+        source: values.source || "manual"
+      }
+    };
+    state.notes.push(note);
     saveState(state);
+    return note;
+  }
+
+  function updateNote(noteId, input) {
+    const state = getState();
+    const note = state.notes.find(function (item) { return item.id === noteId; });
+    if (!note) throw new Error("未找到该笔记。");
+    const values = input || {};
+    if (Object.prototype.hasOwnProperty.call(values, "title")) note.title = String(values.title || "").trim() || noteTitle(note.content);
+    if (Object.prototype.hasOwnProperty.call(values, "content")) {
+      note.content = String(values.content || "").trim();
+      if (!note.content) throw new Error("笔记内容不能为空。");
+    }
+    if (Object.prototype.hasOwnProperty.call(values, "tags")) note.tags = normalizeTags(values.tags);
+    if (Object.prototype.hasOwnProperty.call(values, "relatedGoal")) note.relatedGoal = values.relatedGoal || null;
+    if (Object.prototype.hasOwnProperty.call(values, "relatedProject")) note.relatedProject = values.relatedProject || null;
+    if (Object.prototype.hasOwnProperty.call(values, "status")) note.status = values.status === "archived" ? "archived" : "active";
+    note.updatedAt = now();
+    saveState(state);
+    return note;
+  }
+
+  function archiveNote(noteId) {
+    return updateNote(noteId, { status: "archived" });
+  }
+
+  function deleteNote(noteId) {
+    const state = getState();
+    const index = state.notes.findIndex(function (item) { return item.id === noteId; });
+    if (index === -1) throw new Error("未找到该笔记。");
+    const removed = state.notes.splice(index, 1)[0];
+    saveState(state);
+    return removed;
+  }
+
+  function convertCaptureToNote(captureId, input) {
+    const state = getState();
+    const capture = state.captures.find(function (item) { return item.id === captureId; });
+    if (!capture) throw new Error("未找到该捕获记录。");
+    capture.context = capture.context || { convertedTaskId: null, convertedNoteId: null };
+    if (capture.context.convertedNoteId) throw new Error("该捕获记录已经转换为笔记。");
+
+    const values = input || {};
+    const note = createNote({
+      title: values.title || noteTitle(capture.content),
+      content: values.content || capture.content,
+      tags: values.tags,
+      sourceCaptureId: capture.id,
+      relatedGoal: values.relatedGoal || capture.relatedGoal,
+      relatedProject: values.relatedProject || capture.relatedProject,
+      source: "capture"
+    });
+    const updatedState = getState();
+    const updatedCapture = updatedState.captures.find(function (item) { return item.id === captureId; });
+    updatedCapture.status = "converted";
+    updatedCapture.context = updatedCapture.context || {};
+    updatedCapture.context.convertedNoteId = note.id;
+    saveState(updatedState);
+    return note;
+  }
+
+  function archiveCapture(captureId) {
+    const state = getState();
+    const capture = state.captures.find(function (item) { return item.id === captureId; });
+    if (!capture) throw new Error("未找到该捕获记录。");
+    capture.status = "archived";
+    saveState(state);
+    return capture;
+  }
+
+  function projectTask(task) {
+    return task ? {
+      id: task.id,
+      title: task.title,
+      priority: task.priority,
+      status: task.status,
+      today: task.today === true,
+      todayDate: task.todayDate || null,
+      dueDate: task.dueDate || null,
+      createdAt: task.createdAt,
+      completedAt: task.completedAt || null,
+      sourceCaptureId: task.sourceCaptureId || null
+    } : null;
+  }
+
+  function projectNote(note) {
+    return note ? {
+      id: note.id,
+      title: note.title,
+      content: note.content,
+      tags: note.tags.slice(),
+      status: note.status,
+      sourceCaptureId: note.sourceCaptureId || null,
+      relatedGoal: note.relatedGoal || null,
+      relatedProject: note.relatedProject || null,
+      createdAt: note.createdAt,
+      updatedAt: note.updatedAt
+    } : null;
+  }
+
+  function projectCapture(capture) {
+    return capture ? {
+      id: capture.id,
+      content: capture.content,
+      category: capture.category,
+      status: capture.status,
+      source: capture.source,
+      relatedGoal: capture.relatedGoal || null,
+      relatedProject: capture.relatedProject || null,
+      createdAt: capture.createdAt
+    } : null;
+  }
+
+  function projectDecision(decision) {
+    return decision ? {
+      id: decision.id,
+      problem: decision.problem,
+      choice: decision.choice,
+      reason: decision.reason,
+      risk: decision.risk,
+      result: decision.result
+    } : null;
+  }
+
+  function projectReview(review) {
+    return review ? {
+      id: review.id,
+      date: review.date,
+      tomorrowGoal: review.tomorrowGoal,
+      createdAt: review.createdAt,
+      updatedAt: review.updatedAt
+    } : null;
+  }
+
+  function getAIContext(options) {
+    const state = getReadOnlyState();
+    const values = options || {};
+    const scope = values.scope || "dashboard";
+    const dateKey = isDateKey(values.date) ? values.date : getLocalDate();
+    const activeTasks = state.tasks.filter(function (task) { return task.status === "todo" || task.status === "in_progress"; });
+    const todayTasks = activeTasks.filter(function (task) { return task.today === true && task.todayDate === dateKey; });
+    const completedToday = state.tasks.filter(function (task) { return task.completedAt && getLocalDate(new Date(task.completedAt)) === dateKey; });
+    const capturesToday = state.captures.filter(function (capture) { return capture.createdAt && getLocalDate(new Date(capture.createdAt)) === dateKey; });
+    const recentNotes = state.notes.filter(function (note) { return note.status !== "archived"; }).sort(function (a, b) { return b.updatedAt.localeCompare(a.updatedAt); }).slice(0, 10);
+    const base = { schemaVersion: SCHEMA_VERSION, generatedAt: now(), scope: scope };
+
+    if (scope === "today") return Object.assign(base, { date: dateKey, goal: state.goals[0] ? { id: state.goals[0].id, title: state.goals[0].title, progress: state.goals[0].progress } : null, todayTasks: todayTasks.map(projectTask), completedToday: completedToday.map(projectTask), capturesToday: capturesToday.map(projectCapture), dailyReview: projectReview(state.dailyReviews.find(function (review) { return review.date === dateKey; })) });
+    if (scope === "capture") {
+      const capture = state.captures.find(function (item) { return item.id === values.captureId; });
+      return Object.assign(base, { capture: projectCapture(capture), sourceTask: capture ? projectTask(state.tasks.find(function (task) { return task.sourceCaptureId === capture.id; })) : null, sourceNote: capture ? projectNote(state.notes.find(function (note) { return note.sourceCaptureId === capture.id; })) : null });
+    }
+    if (scope === "task") {
+      const task = state.tasks.find(function (item) { return item.id === values.taskId; });
+      return Object.assign(base, { task: projectTask(task), sourceCapture: task ? projectCapture(state.captures.find(function (capture) { return capture.id === task.sourceCaptureId; })) : null });
+    }
+    if (scope === "note") {
+      const note = state.notes.find(function (item) { return item.id === values.noteId; });
+      return Object.assign(base, { note: projectNote(note) });
+    }
+    if (scope === "decision") {
+      const decision = state.decisions.find(function (item) { return item.id === values.decisionId; });
+      return Object.assign(base, { decision: projectDecision(decision) });
+    }
+    if (scope === "review") return Object.assign(base, { date: dateKey, dailyReview: projectReview(state.dailyReviews.find(function (review) { return review.date === dateKey; })), completedToday: completedToday.map(projectTask), todayTasks: todayTasks.map(projectTask), capturesToday: capturesToday.map(projectCapture) });
+    if (scope === "all") return Object.assign(base, { goals: state.goals.map(function (goal) { return { id: goal.id, title: goal.title, progress: goal.progress }; }), captures: state.captures.map(projectCapture), tasks: state.tasks.map(projectTask), notes: state.notes.map(projectNote), decisions: state.decisions.map(projectDecision), dailyReviews: state.dailyReviews.map(projectReview) });
+    return Object.assign(base, { goals: state.goals.map(function (goal) { return { id: goal.id, title: goal.title, progress: goal.progress }; }), todayTasks: todayTasks.map(projectTask), pendingTasks: activeTasks.filter(function (task) { return !todayTasks.includes(task); }).map(projectTask), recentCaptures: state.captures.slice().sort(function (a, b) { return b.createdAt.localeCompare(a.createdAt); }).slice(0, 10).map(projectCapture), recentNotes: recentNotes.map(projectNote), decisions: state.decisions.slice().sort(function (a, b) { return (b.context && b.context.createdAt || "").localeCompare(a.context && a.context.createdAt || ""); }).slice(0, 10).map(projectDecision) });
   }
 
   function createDecision(problem) {
@@ -334,6 +564,12 @@
     saveDailyReview: saveDailyReview,
     getLocalDate: getLocalDate,
     createNote: createNote,
+    updateNote: updateNote,
+    deleteNote: deleteNote,
+    archiveNote: archiveNote,
+    convertCaptureToNote: convertCaptureToNote,
+    archiveCapture: archiveCapture,
+    getAIContext: getAIContext,
     createDecision: createDecision
   };
 })();
