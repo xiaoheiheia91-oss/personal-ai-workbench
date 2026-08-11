@@ -32,7 +32,7 @@
 <div class="dashboard-columns">
 <div>
 <h3>今日任务</h3>
-<div id="dashboard-tasks" class="compact-list"></div>
+<div id="today-tasks" class="compact-list"></div>
 </div>
 <div>
 <h3>最近记录</h3>
@@ -62,9 +62,38 @@
 <section aria-labelledby="task-title">
 <div class="section-heading">
 <h2 id="task-title">任务</h2>
-<span class="muted">从捕获开始行动</span>
+<span class="muted">今日 / 待处理 / 已完成</span>
 </div>
-<div id="tasks" class="record-list"></div>
+<div class="task-group">
+<h3>今日任务</h3>
+<div id="today-tasks-list" class="record-list"></div>
+</div>
+<div class="task-group">
+<h3>待处理任务</h3>
+<div id="pending-tasks" class="record-list"></div>
+</div>
+<div class="task-group">
+<h3>已完成任务</h3>
+<div id="completed-tasks" class="record-list"></div>
+</div>
+</section>
+
+<section aria-labelledby="review-title">
+<div class="section-heading">
+<h2 id="review-title">每日回顾</h2>
+<span class="muted">收尾今天，准备明天</span>
+</div>
+<div class="review-columns">
+<div><h3>今日完成</h3><div id="review-completed" class="compact-list"></div></div>
+<div><h3>今日未完成</h3><div id="review-incomplete" class="compact-list"></div></div>
+<div><h3>今日新增捕获</h3><div id="review-captures" class="compact-list"></div></div>
+</div>
+<form id="review-form">
+<label for="tomorrow-goal">明日主线</label>
+<textarea id="tomorrow-goal" rows="2" placeholder="写下明天最重要的一件事"></textarea>
+<button type="submit">保存明日主线</button>
+</form>
+<p id="review-status" class="status" aria-live="polite"></p>
 </section>
 
 <section class="secondary-section" aria-labelledby="advisor-title">
@@ -91,6 +120,38 @@
 <div id="decisions"></div>
 </section>
 </main>
+<dialog id="conversion-dialog" class="editor-dialog">
+<form id="conversion-form" method="dialog">
+<div class="section-heading"><h2>转换为任务</h2><button type="button" class="icon-button" data-close-dialog="conversion-dialog" aria-label="关闭">×</button></div>
+<input type="hidden" id="conversion-capture-id">
+<label for="conversion-title">任务标题</label>
+<input id="conversion-title" type="text" required>
+<label for="conversion-priority">优先级</label>
+<select id="conversion-priority"><option value="high">高</option><option value="medium" selected>中</option><option value="low">低</option></select>
+<label for="conversion-due-date">截止日期</label>
+<input id="conversion-due-date" type="date">
+<label class="checkbox-label"><input id="conversion-today" type="checkbox"> 加入今日任务</label>
+<p id="conversion-status" class="status" aria-live="polite"></p>
+<div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog="conversion-dialog">取消</button><button type="submit">确认转换</button></div>
+</form>
+</dialog>
+<dialog id="task-dialog" class="editor-dialog">
+<form id="task-form" method="dialog">
+<div class="section-heading"><h2>编辑任务</h2><button type="button" class="icon-button" data-close-dialog="task-dialog" aria-label="关闭">×</button></div>
+<input type="hidden" id="task-id">
+<label for="task-title-input">任务标题</label>
+<input id="task-title-input" type="text" required>
+<label for="task-priority">优先级</label>
+<select id="task-priority"><option value="high">高</option><option value="medium">中</option><option value="low">低</option></select>
+<label for="task-due-date">截止日期</label>
+<input id="task-due-date" type="date">
+<label for="task-status">状态</label>
+<select id="task-status"><option value="todo">待开始</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select>
+<label class="checkbox-label"><input id="task-today" type="checkbox"> 加入今日任务</label>
+<p id="task-editor-status" class="status" aria-live="polite"></p>
+<div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog="task-dialog">取消</button><button type="submit">保存修改</button></div>
+</form>
+</dialog>
 <script src="storage.js"></script>
 <script src="app.js"></script>
 </body>

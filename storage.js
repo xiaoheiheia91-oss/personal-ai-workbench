@@ -1,9 +1,10 @@
 (function () {
   const STORAGE_KEY = "personal-ai-os.v2-alpha";
-  const SCHEMA_VERSION = 1;
+  const SCHEMA_VERSION = 2;
   const CAPTURE_SOURCES = ["manual", "voice", "web_clip", "ai", "import"];
   const CAPTURE_CATEGORIES = ["idea", "task", "note", "decision", "uncategorized"];
   const TASK_PRIORITIES = ["high", "medium", "low"];
+  const TASK_STATUSES = ["todo", "in_progress", "completed", "cancelled"];
 
   function createId(prefix) {
     if (window.crypto && typeof window.crypto.randomUUID === "function") {
@@ -16,6 +17,17 @@
     return new Date().toISOString();
   }
 
+  function getLocalDate(date) {
+    const value = date || new Date();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return value.getFullYear() + "-" + month + "-" + day;
+  }
+
+  function isDateKey(value) {
+    return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+  }
+
   function emptyState() {
     return {
       schemaVersion: SCHEMA_VERSION,
@@ -23,7 +35,8 @@
       captures: [],
       tasks: [],
       notes: [],
-      decisions: []
+      decisions: [],
+      dailyReviews: []
     };
   }
 
@@ -86,8 +99,33 @@
   function normalizeState(value) {
     const state = value && typeof value === "object" ? value : emptyState();
     state.schemaVersion = SCHEMA_VERSION;
-    ["goals", "captures", "tasks", "notes", "decisions"].forEach(function (key) {
+    ["goals", "captures", "tasks", "notes", "decisions", "dailyReviews"].forEach(function (key) {
       if (!Array.isArray(state[key])) state[key] = [];
+    });
+    state.tasks.forEach(function (task) {
+      task.priority = TASK_PRIORITIES.includes(task.priority) ? task.priority : "medium";
+      task.status = TASK_STATUSES.includes(task.status) ? task.status : "todo";
+      task.createdAt = task.createdAt || now();
+      task.updatedAt = task.updatedAt || task.createdAt;
+      task.completedAt = task.status === "completed" ? (task.completedAt || task.updatedAt) : null;
+      task.dueDate = isDateKey(task.dueDate) ? task.dueDate : null;
+      task.today = task.today === true;
+      task.todayDate = task.today && isDateKey(task.todayDate) ? task.todayDate : null;
+      if (!task.todayDate) task.today = false;
+      task.sourceCaptureId = task.sourceCaptureId || null;
+      task.context = task.context || { relatedGoal: null, relatedProject: null };
+    });
+    state.captures.forEach(function (capture) {
+      capture.category = CAPTURE_CATEGORIES.includes(capture.category) ? capture.category : "uncategorized";
+      capture.status = ["inbox", "converted", "archived"].includes(capture.status) ? capture.status : "inbox";
+      capture.source = CAPTURE_SOURCES.includes(capture.source) ? capture.source : "manual";
+      capture.createdAt = capture.createdAt || now();
+      capture.relatedGoal = capture.relatedGoal || null;
+      capture.relatedProject = capture.relatedProject || null;
+      capture.context = capture.context || { convertedTaskId: null };
+    });
+    state.goals.forEach(function (goal) {
+      goal.progress = typeof goal.progress === "number" ? goal.progress : 0;
     });
     return state;
   }
@@ -101,7 +139,11 @@
     }
 
     try {
-      return normalizeState(JSON.parse(raw));
+      const parsed = JSON.parse(raw);
+      const storedVersion = parsed.schemaVersion;
+      const normalized = normalizeState(parsed);
+      if (storedVersion !== SCHEMA_VERSION) saveState(normalized);
+      return normalized;
     } catch {
       const recovered = migrateLegacyData();
       saveState(recovered);
@@ -167,8 +209,11 @@
       priority: TASK_PRIORITIES.includes(options && options.priority) ? options.priority : "medium",
       status: "todo",
       createdAt: now(),
+      updatedAt: now(),
       completedAt: null,
-      dueDate: (options && options.dueDate) || null,
+      dueDate: isDateKey(options && options.dueDate) ? options.dueDate : null,
+      today: Boolean(options && options.today),
+      todayDate: options && options.today ? getLocalDate() : null,
       sourceCaptureId: capture.id,
       context: {
         relatedGoal: capture.relatedGoal || null,
@@ -185,14 +230,67 @@
   }
 
   function completeTask(taskId) {
+    return updateTask(taskId, { status: "completed" });
+  }
+
+  function updateTask(taskId, input) {
     const state = getState();
     const task = state.tasks.find(function (item) { return item.id === taskId; });
     if (!task) throw new Error("未找到该任务。");
 
-    task.status = "completed";
-    task.completedAt = now();
+    if (Object.prototype.hasOwnProperty.call(input, "title")) {
+      const title = String(input.title || "").trim();
+      if (!title) throw new Error("任务标题不能为空。");
+      task.title = title;
+    }
+    if (Object.prototype.hasOwnProperty.call(input, "priority")) {
+      task.priority = TASK_PRIORITIES.includes(input.priority) ? input.priority : "medium";
+    }
+    if (Object.prototype.hasOwnProperty.call(input, "dueDate")) {
+      task.dueDate = isDateKey(input.dueDate) ? input.dueDate : null;
+    }
+    if (Object.prototype.hasOwnProperty.call(input, "today")) {
+      task.today = input.today === true;
+      task.todayDate = task.today ? getLocalDate() : null;
+    }
+    if (Object.prototype.hasOwnProperty.call(input, "status")) {
+      task.status = TASK_STATUSES.includes(input.status) ? input.status : "todo";
+      task.completedAt = task.status === "completed" ? (task.completedAt || now()) : null;
+    }
+    task.updatedAt = now();
     saveState(state);
     return task;
+  }
+
+  function getDailyReview(date) {
+    const dateKey = isDateKey(date) ? date : getLocalDate();
+    const state = getState();
+    return state.dailyReviews.find(function (review) { return review.date === dateKey; }) || null;
+  }
+
+  function saveDailyReview(input) {
+    const state = getState();
+    const date = isDateKey(input && input.date) ? input.date : getLocalDate();
+    const tomorrowGoal = String((input && input.tomorrowGoal) || "").trim();
+    const existing = state.dailyReviews.find(function (review) { return review.date === date; });
+
+    if (existing) {
+      existing.tomorrowGoal = tomorrowGoal;
+      existing.updatedAt = now();
+      saveState(state);
+      return existing;
+    }
+
+    const review = {
+      id: createId("review-"),
+      date: date,
+      tomorrowGoal: tomorrowGoal,
+      createdAt: now(),
+      updatedAt: now()
+    };
+    state.dailyReviews.push(review);
+    saveState(state);
+    return review;
   }
 
   function createNote(content) {
@@ -231,6 +329,10 @@
     createCapture: createCapture,
     convertCaptureToTask: convertCaptureToTask,
     completeTask: completeTask,
+    updateTask: updateTask,
+    getDailyReview: getDailyReview,
+    saveDailyReview: saveDailyReview,
+    getLocalDate: getLocalDate,
     createNote: createNote,
     createDecision: createDecision
   };

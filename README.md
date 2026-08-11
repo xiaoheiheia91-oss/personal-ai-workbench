@@ -1,4 +1,4 @@
-# Personal AI OS v2.0-alpha
+# Personal AI OS v2.0-alpha.2
 
 当前阶段实现个人 AI OS 的最小闭环：
 
@@ -6,11 +6,15 @@
 - 快速捕获想法
 - 将捕获转换为任务
 - 标记任务完成
+- 今日 / 待处理 / 已完成任务分组
+- 编辑任务标题、优先级、截止日期和状态
+- 转换捕获时编辑任务信息并加入今日任务
+- 每日回顾和明日主线
 - 在首页查看任务统计和最近记录
 
 ## 数据存储
 
-本阶段保持纯静态部署，数据由 `storage.js` 写入浏览器 `localStorage`。数据不会自动跨设备同步；后续版本会在不改变页面流程的前提下替换存储层。
+本阶段保持纯静态部署，数据由 `storage.js` 写入浏览器 `localStorage`。schema 已升级为 v2：旧任务会补齐 `today`、`todayDate`、`updatedAt` 和 `dueDate`，并新增 `dailyReviews`。数据不会自动跨设备同步。
 
 ## 本地与 Vercel 部署
 
