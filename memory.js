@@ -294,6 +294,66 @@
     return JSON.stringify(backup, null, 2);
   }
 
+  function validateDataBackup(backup) {
+    if (!backup || typeof backup !== "object" || Array.isArray(backup)) {
+      throw new Error("备份文件结构无效。");
+    }
+    if (backup.exportFormatVersion !== 1) {
+      throw new Error("不支持的导出格式版本。");
+    }
+    if (backup.schemaVersion !== 3) {
+      throw new Error("备份不是 Schema v3 数据。");
+    }
+    if (typeof backup.appVersion !== "string" || !backup.appVersion.trim()) {
+      throw new Error("备份缺少应用版本信息。");
+    }
+
+    const timestamp = new Date(backup.exportedAt);
+    if (Number.isNaN(timestamp.getTime())) {
+      throw new Error("备份创建时间无效。");
+    }
+    if (!backup.data || typeof backup.data !== "object" || Array.isArray(backup.data)) {
+      throw new Error("备份数据结构无效。");
+    }
+    if (backup.data.schemaVersion !== 3 || backup.data.schemaVersion !== backup.schemaVersion) {
+      throw new Error("备份内外的 Schema 版本不一致。");
+    }
+    DATA_COLLECTIONS.forEach(function (key) {
+      if (!Array.isArray(backup.data[key])) {
+        throw new Error("数据集合缺失或格式无效：" + key);
+      }
+    });
+
+    const counts = countDataRecords(backup.data);
+    if (!backup.recordCounts || typeof backup.recordCounts !== "object" || Array.isArray(backup.recordCounts)) {
+      throw new Error("备份缺少数据统计。");
+    }
+    DATA_COLLECTIONS.concat(["total"]).forEach(function (key) {
+      if (backup.recordCounts[key] !== counts[key]) {
+        throw new Error("备份数据统计不一致：" + key);
+      }
+    });
+
+    return deepFreeze({
+      exportFormatVersion: backup.exportFormatVersion,
+      appVersion: backup.appVersion.trim(),
+      schemaVersion: backup.schemaVersion,
+      exportedAt: timestamp.toISOString(),
+      recordCounts: cloneJson(counts),
+      data: cloneJson(backup.data)
+    });
+  }
+
+  function parseDataBackup(text) {
+    let backup;
+    try {
+      backup = JSON.parse(String(text));
+    } catch (error) {
+      throw new Error("JSON 文件损坏或格式无效。");
+    }
+    return validateDataBackup(backup);
+  }
+
   function dataBackupFilename(exportedAt) {
     const timestamp = new Date(exportedAt);
     if (Number.isNaN(timestamp.getTime())) throw new Error("导出时间无效。");
@@ -323,6 +383,8 @@
     countDataRecords: countDataRecords,
     createDataBackup: createDataBackup,
     serializeDataBackup: serializeDataBackup,
+    validateDataBackup: validateDataBackup,
+    parseDataBackup: parseDataBackup,
     dataBackupFilename: dataBackupFilename
   });
 });

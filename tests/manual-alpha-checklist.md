@@ -25,3 +25,11 @@
 23. Save daily reviews on different dates and verify “复盘历史” shows every saved review, with an optional today-only filter.
 24. Leave the daily goal blank and submit; verify the existing goal remains unchanged and an explanatory error appears.
 25. Confirm the browser makes no network requests while creating, filtering, archiving, restoring, or reviewing records.
+
+# Alpha 3.5.2 数据恢复
+
+- 在空数据空间选择有效的 Alpha 3.5 JSON 备份，确认页面显示文件来源、创建时间及六类记录数量。
+- 确认恢复后，检查目标、捕获、任务、笔记、决策和每日复盘均完整出现，归档、完成、取消和已转换状态仍保留。
+- 分别选择损坏 JSON、错误 Schema、缺少任一业务集合及统计不一致的文件，确认恢复被拒绝且现有 `localStorage` 完全不变。
+- 在已有任一业务记录时选择有效备份，确认预览可见但恢复按钮不可用，且不会覆盖或合并。
+- 断开外部网络并禁用 AI 服务，重复有效恢复，确认功能仍可使用且没有网络请求。

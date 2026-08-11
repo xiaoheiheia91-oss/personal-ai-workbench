@@ -1,4 +1,4 @@
-# Personal AI OS v2.0-alpha.3.5
+# Personal AI OS v2.0-alpha.3.5.2
 
 Personal AI OS 是一个遵循 **Local First，AI Optional** 的纯静态个人工作台。今日任务、捕获箱、笔记、知识库、个人记忆、搜索、历史查看和 JSON 备份均不依赖 AI，也不需要外部网络。
 
@@ -11,6 +11,7 @@ Personal AI OS 是一个遵循 **Local First，AI Optional** 的纯静态个人�
 - 查看捕获、任务、笔记、决策和复盘的历史状态。
 - 在个人记忆中心搜索全部 Schema v3 记录。
 - 导出包含版本元信息、数据统计和完整业务数据的 JSON 备份。
+- 从本地 JSON 文件预览并安全恢复完整 Schema v3 备份，仅允许恢复到空数据空间。
 - 提供面向未来 AI 增强层的只读上下文出口；当前不连接任何模型。
 
 ## 直接离线打开
@@ -75,7 +76,7 @@ python -m http.server 8000 --bind 192.168.2.152
 - 更换访问地址、端口或部署域名前。
 - 升级 Personal AI OS 前。
 
-将备份保存在至少两个由自己控制的位置。当前版本尚未提供 JSON 导入，因此导出文件主要用于防丢和未来版本恢复。
+将备份保存在至少两个由自己控制的位置。Alpha 3.5.2 可在“个人记忆”中选择该 JSON 文件，校验来源、创建时间和记录数量后恢复。为防止误覆盖，恢复只允许写入空数据空间，不会覆盖或自动合并已有记录。
 
 ## Vercel 与本地模式
 
@@ -89,6 +90,6 @@ Vercel 页面首次加载或缓存失效时需要互联网；当前没有 Servic
 - Schema v3 和浏览器 `localStorage`。
 - 无构建步骤、无后端、无数据库、无第三方依赖。
 - 无模型 API 请求、无 API Key、无 AI 运行依赖。
-- 当前不支持自动同步或 JSON 导入。
+- 当前不支持自动同步；JSON 恢复仅支持完整 Schema v3 备份和空数据空间。
 
 完整本地使用说明见 [LOCAL_FIRST.md](LOCAL_FIRST.md)，手动验收步骤见 `tests/manual-alpha-checklist.md`。

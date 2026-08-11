@@ -5,6 +5,7 @@
   const CAPTURE_CATEGORIES = ["idea", "task", "note", "decision", "uncategorized"];
   const TASK_PRIORITIES = ["high", "medium", "low"];
   const TASK_STATUSES = ["todo", "in_progress", "completed", "cancelled"];
+  const DATA_COLLECTIONS = ["goals", "captures", "tasks", "notes", "decisions", "dailyReviews"];
 
   function createId(prefix) {
     if (window.crypto && typeof window.crypto.randomUUID === "function") {
@@ -531,6 +532,63 @@
     return Object.assign(base, { goals: state.goals.map(function (goal) { return { id: goal.id, title: goal.title, progress: goal.progress }; }), todayTasks: todayTasks.map(projectTask), pendingTasks: activeTasks.filter(function (task) { return !todayTasks.includes(task); }).map(projectTask), recentCaptures: state.captures.slice().sort(function (a, b) { return b.createdAt.localeCompare(a.createdAt); }).slice(0, 10).map(projectCapture), recentNotes: recentNotes.map(projectNote), decisions: state.decisions.slice().sort(function (a, b) { return (b.context && b.context.createdAt || "").localeCompare(a.context && a.context.createdAt || ""); }).slice(0, 10).map(projectDecision) });
   }
 
+  function validateRestoreData(data) {
+    if (!data || typeof data !== "object" || Array.isArray(data) || data.schemaVersion !== SCHEMA_VERSION) {
+      throw new Error("只能恢复完整的 Schema v3 数据。");
+    }
+    DATA_COLLECTIONS.forEach(function (key) {
+      if (!Array.isArray(data[key])) throw new Error("数据集合缺失或格式无效：" + key);
+    });
+    try {
+      return JSON.parse(JSON.stringify(data));
+    } catch (error) {
+      throw new Error("恢复数据无法安全复制。");
+    }
+  }
+
+  function hasRecords(state) {
+    return DATA_COLLECTIONS.some(function (key) {
+      if (!Array.isArray(state[key])) throw new Error("当前数据空间结构异常，已拒绝覆盖。");
+      return state[key].length > 0;
+    });
+  }
+
+  function hasLegacyRecords() {
+    if ((localStorage.getItem("goal") || "").trim()) return true;
+    return ["notes", "decisions"].some(function (key) {
+      const raw = localStorage.getItem(key);
+      if (raw === null || !raw.trim()) return false;
+      try {
+        const values = JSON.parse(raw);
+        return !Array.isArray(values) || values.length > 0;
+      } catch (error) {
+        return true;
+      }
+    });
+  }
+
+  function restoreDataBackup(data) {
+    const restored = validateRestoreData(data);
+    const raw = localStorage.getItem(STORAGE_KEY);
+
+    if (raw) {
+      let current;
+      try {
+        current = JSON.parse(raw);
+      } catch (error) {
+        throw new Error("当前数据无法读取，已拒绝覆盖。");
+      }
+      if (!current || typeof current !== "object" || Array.isArray(current) || hasRecords(current)) {
+        throw new Error("当前数据空间不是空的，不能覆盖或自动合并。");
+      }
+    } else if (hasLegacyRecords()) {
+      throw new Error("当前数据空间不是空的，不能覆盖或自动合并。");
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
+    return restored;
+  }
+
   function createDecision(problem) {
     const value = String(problem || "").trim();
     if (!value) throw new Error("决策事项不能为空。");
@@ -563,6 +621,7 @@
     restoreNote: restoreNote,
     convertCaptureToNote: convertCaptureToNote,
     archiveCapture: archiveCapture,
+    restoreDataBackup: restoreDataBackup,
     getAIContext: getAIContext,
     createDecision: createDecision
   };

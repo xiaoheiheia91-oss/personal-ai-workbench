@@ -132,6 +132,17 @@
 <button id="memory-export-button" type="button">导出 JSON 备份</button>
 </div>
 <p id="memory-export-status" class="status" aria-live="polite"></p>
+<div class="memory-restore">
+<div><h3>数据恢复</h3><p class="muted memory-backup-note">仅空数据空间可以恢复；不会覆盖或自动合并现有记录。</p></div>
+<label class="memory-file-button" for="memory-restore-file">选择 JSON 备份<input id="memory-restore-file" type="file" accept=".json,application/json"></label>
+</div>
+<div id="memory-restore-preview" class="memory-restore-preview" hidden>
+<p id="memory-restore-source"></p>
+<p id="memory-restore-created"></p>
+<p id="memory-restore-counts"></p>
+<button id="memory-restore-button" type="button" disabled>确认恢复</button>
+</div>
+<p id="memory-restore-status" class="status" aria-live="polite"></p>
 <div id="memory-records" class="record-list" aria-live="polite"></div>
 </section>
 

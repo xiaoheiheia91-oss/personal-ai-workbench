@@ -83,6 +83,13 @@ document.addEventListener("DOMContentLoaded", function () {
     memoryBackupCount: document.getElementById("memory-backup-count"),
     memoryExportButton: document.getElementById("memory-export-button"),
     memoryExportStatus: document.getElementById("memory-export-status"),
+    memoryRestoreFile: document.getElementById("memory-restore-file"),
+    memoryRestorePreview: document.getElementById("memory-restore-preview"),
+    memoryRestoreSource: document.getElementById("memory-restore-source"),
+    memoryRestoreCreated: document.getElementById("memory-restore-created"),
+    memoryRestoreCounts: document.getElementById("memory-restore-counts"),
+    memoryRestoreButton: document.getElementById("memory-restore-button"),
+    memoryRestoreStatus: document.getElementById("memory-restore-status"),
     decisionButton: document.getElementById("decision-button"),
     decision: document.getElementById("decision"),
     decisionStatusFilter: document.getElementById("decision-status-filter"),
@@ -91,6 +98,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const todayKey = storage.getLocalDate();
   let currentState = null;
+  let pendingRestore = null;
 
   function setStatus(element, message, isError) {
     element.textContent = message || "";
@@ -377,6 +385,10 @@ document.addEventListener("DOMContentLoaded", function () {
     elements.memoryCount.textContent = "显示 " + records.length + " / 共 " + allRecords.length + " 条";
     const counts = memory.countDataRecords(state);
     elements.memoryBackupCount.textContent = "将导出 " + counts.total + " 条记录：目标 " + counts.goals + "、捕获 " + counts.captures + "、任务 " + counts.tasks + "、笔记 " + counts.notes + "、决策 " + counts.decisions + "、复盘 " + counts.dailyReviews + "。";
+    if (pendingRestore) {
+      elements.memoryRestoreButton.disabled = counts.total !== 0;
+      if (counts.total !== 0) setStatus(elements.memoryRestoreStatus, "当前数据空间不是空的，不能覆盖或自动合并。", true);
+    }
     clearChildren(elements.memoryRecords);
     if (!records.length) {
       elements.memoryRecords.appendChild(emptyState("没有符合当前条件的记录。清除搜索或选择全部记录后可查看完整记忆。"));
@@ -439,6 +451,63 @@ document.addEventListener("DOMContentLoaded", function () {
       setStatus(elements.memoryExportStatus, "备份已导出：" + filename, false);
     } catch (error) {
       setStatus(elements.memoryExportStatus, error.message, true);
+    }
+  }
+
+  function restoreCountsText(counts) {
+    return "记录数量：共 " + counts.total + " 条；目标 " + counts.goals + "、捕获 " + counts.captures + "、任务 " + counts.tasks + "、笔记 " + counts.notes + "、决策 " + counts.decisions + "、复盘 " + counts.dailyReviews + "。";
+  }
+
+  function clearRestorePreview() {
+    pendingRestore = null;
+    elements.memoryRestorePreview.hidden = true;
+    elements.memoryRestoreButton.disabled = true;
+    elements.memoryRestoreSource.textContent = "";
+    elements.memoryRestoreCreated.textContent = "";
+    elements.memoryRestoreCounts.textContent = "";
+  }
+
+  async function inspectRestoreFile() {
+    clearRestorePreview();
+    setStatus(elements.memoryRestoreStatus, "", false);
+    const file = elements.memoryRestoreFile.files[0];
+    if (!file) return;
+
+    try {
+      const backup = memory.parseDataBackup(await file.text());
+      pendingRestore = backup;
+      elements.memoryRestoreSource.textContent = "数据来源：" + file.name + "（" + backup.appVersion + "）";
+      elements.memoryRestoreCreated.textContent = "创建时间：" + formatDate(backup.exportedAt);
+      elements.memoryRestoreCounts.textContent = restoreCountsText(backup.recordCounts);
+      elements.memoryRestorePreview.hidden = false;
+
+      const currentCounts = memory.countDataRecords(currentState);
+      if (currentCounts.total !== 0) {
+        elements.memoryRestoreButton.disabled = true;
+        setStatus(elements.memoryRestoreStatus, "备份校验通过，但当前数据空间不是空的，不能覆盖或自动合并。", true);
+      } else {
+        elements.memoryRestoreButton.disabled = false;
+        setStatus(elements.memoryRestoreStatus, "备份校验通过。确认后将恢复到当前空数据空间。", false);
+      }
+    } catch (error) {
+      clearRestorePreview();
+      setStatus(elements.memoryRestoreStatus, error.message, true);
+    }
+  }
+
+  function confirmDataRestore() {
+    if (!pendingRestore) return;
+    const recordTotal = pendingRestore.recordCounts.total;
+    if (!window.confirm("确认从备份恢复 " + recordTotal + " 条记录？此操作只允许在空数据空间执行。")) return;
+
+    try {
+      storage.restoreDataBackup(pendingRestore.data);
+      clearRestorePreview();
+      elements.memoryRestoreFile.value = "";
+      render();
+      setStatus(elements.memoryRestoreStatus, "数据恢复完成，共恢复 " + recordTotal + " 条记录。", false);
+    } catch (error) {
+      setStatus(elements.memoryRestoreStatus, error.message, true);
     }
   }
 
@@ -763,6 +832,8 @@ document.addEventListener("DOMContentLoaded", function () {
   elements.memoryType.addEventListener("change", function () { renderMemoryCenter(currentState); });
   elements.memoryOrder.addEventListener("change", function () { renderMemoryCenter(currentState); });
   elements.memoryExportButton.addEventListener("click", downloadDataBackup);
+  elements.memoryRestoreFile.addEventListener("change", inspectRestoreFile);
+  elements.memoryRestoreButton.addEventListener("click", confirmDataRestore);
 
   document.querySelectorAll("[data-close-dialog]").forEach(function (button) {
     button.addEventListener("click", function () {
