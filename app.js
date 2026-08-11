@@ -74,6 +74,9 @@ document.addEventListener("DOMContentLoaded", function () {
     memoryOrder: document.getElementById("memory-order"),
     memoryCount: document.getElementById("memory-count"),
     memoryRecords: document.getElementById("memory-records"),
+    memoryBackupCount: document.getElementById("memory-backup-count"),
+    memoryExportButton: document.getElementById("memory-export-button"),
+    memoryExportStatus: document.getElementById("memory-export-status"),
     decisionButton: document.getElementById("decision-button"),
     decision: document.getElementById("decision"),
     decisions: document.getElementById("decisions")
@@ -363,6 +366,8 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     elements.memoryCount.textContent = "显示 " + records.length + " / 共 " + allRecords.length + " 条";
+    const counts = memory.countDataRecords(state);
+    elements.memoryBackupCount.textContent = "将导出 " + counts.total + " 条记录：目标 " + counts.goals + "、捕获 " + counts.captures + "、任务 " + counts.tasks + "、笔记 " + counts.notes + "、决策 " + counts.decisions + "、复盘 " + counts.dailyReviews + "。";
     clearChildren(elements.memoryRecords);
     if (!records.length) {
       elements.memoryRecords.appendChild(emptyState("没有符合当前条件的记录。清除搜索或选择全部记录后可查看完整记忆。"));
@@ -406,6 +411,26 @@ document.addEventListener("DOMContentLoaded", function () {
       item.appendChild(body);
       elements.memoryRecords.appendChild(item);
     });
+  }
+
+  function downloadDataBackup() {
+    try {
+      const backup = memory.createDataBackup(currentState);
+      const filename = memory.dataBackupFilename(backup.exportedAt);
+      const blob = new Blob([memory.serializeDataBackup(backup)], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.hidden = true;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(function () { URL.revokeObjectURL(url); }, 0);
+      setStatus(elements.memoryExportStatus, "备份已导出：" + filename, false);
+    } catch (error) {
+      setStatus(elements.memoryExportStatus, error.message, true);
+    }
   }
 
   function renderDecisions(state) {
@@ -658,6 +683,7 @@ document.addEventListener("DOMContentLoaded", function () {
   elements.memorySearch.addEventListener("input", function () { renderMemoryCenter(currentState); });
   elements.memoryType.addEventListener("change", function () { renderMemoryCenter(currentState); });
   elements.memoryOrder.addEventListener("change", function () { renderMemoryCenter(currentState); });
+  elements.memoryExportButton.addEventListener("click", downloadDataBackup);
 
   document.querySelectorAll("[data-close-dialog]").forEach(function (button) {
     button.addEventListener("click", function () {

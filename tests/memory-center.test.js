@@ -37,8 +37,13 @@ test("provides the personal memory entry and local controls", function () {
   assert.doesNotMatch(app, /\bfetch\s*\(|XMLHttpRequest|WebSocket/);
 });
 
-test("keeps Schema v3 and introduces no backup or AI integration", function () {
+test("keeps Schema v3 and provides a native local backup control", function () {
   assert.match(storage, /const SCHEMA_VERSION = 3;/);
-  assert.doesNotMatch(app, /createMemoryBackup|downloadMemory|exportMemory/);
-  assert.doesNotMatch(html, /memory-export|memory-backup/);
+  assert.ok(html.includes('id="memory-backup-count"'));
+  assert.ok(html.includes('id="memory-export-button"'));
+  assert.ok(html.includes('id="memory-export-status"'));
+  assert.match(app, /new Blob\(/);
+  assert.match(app, /document\.createElement\("a"\)/);
+  assert.match(app, /URL\.createObjectURL\(blob\)/);
+  assert.doesNotMatch(app, /\bfetch\s*\(|XMLHttpRequest|WebSocket/);
 });

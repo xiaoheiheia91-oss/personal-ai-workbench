@@ -163,6 +163,7 @@ test("does not read or write localStorage and does not request the network", fun
   const memory = require(memoryPath);
   const state = fixtureState();
   memory.buildMemoryRecords(state);
+  memory.createDataBackup(state, "2026-08-12T03:04:05.000Z");
 
   assert.equal(storageReads, 0);
   assert.equal(storageWrites, 0);

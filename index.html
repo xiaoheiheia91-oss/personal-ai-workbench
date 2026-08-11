@@ -112,6 +112,11 @@
 <label for="memory-type">记录类型<select id="memory-type"><option value="">全部记录</option><option value="goal">目标</option><option value="capture">捕获</option><option value="task">任务</option><option value="note">笔记</option><option value="decision">决策</option><option value="review">复盘</option></select></label>
 <label for="memory-order">时间排序<select id="memory-order"><option value="newest">最新在前</option><option value="oldest">最早在前</option></select></label>
 </div>
+<div class="memory-backup">
+<div><h3>数据备份</h3><p id="memory-backup-count" class="muted"></p><p class="muted memory-backup-note">备份保存在你的设备上，不会上传到网络。</p></div>
+<button id="memory-export-button" type="button">导出 JSON 备份</button>
+</div>
+<p id="memory-export-status" class="status" aria-live="polite"></p>
 <div id="memory-records" class="record-list" aria-live="polite"></div>
 </section>
 

@@ -7,6 +7,7 @@
   "use strict";
 
   const RECORD_TYPES = Object.freeze(["goal", "capture", "task", "note", "decision", "review"]);
+  const DATA_COLLECTIONS = Object.freeze(["goals", "captures", "tasks", "notes", "decisions", "dailyReviews"]);
 
   function asArray(value) {
     return Array.isArray(value) ? value : [];
@@ -245,6 +246,61 @@
     return Object.freeze(result);
   }
 
+  function countDataRecords(state) {
+    const value = state && typeof state === "object" ? state : {};
+    const counts = {};
+    let total = 0;
+    DATA_COLLECTIONS.forEach(function (key) {
+      counts[key] = asArray(value[key]).length;
+      total += counts[key];
+    });
+    counts.total = total;
+    return Object.freeze(counts);
+  }
+
+  function cloneJson(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function deepFreeze(value) {
+    if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+    Object.keys(value).forEach(function (key) { deepFreeze(value[key]); });
+    return Object.freeze(value);
+  }
+
+  function createDataBackup(state, exportedAt) {
+    if (!state || typeof state !== "object" || state.schemaVersion !== 3) {
+      throw new Error("只能导出 Schema v3 数据。");
+    }
+    DATA_COLLECTIONS.forEach(function (key) {
+      if (!Array.isArray(state[key])) throw new Error("数据集合缺失或格式无效：" + key);
+    });
+
+    const data = { schemaVersion: 3 };
+    DATA_COLLECTIONS.forEach(function (key) { data[key] = cloneJson(state[key]); });
+    const timestamp = exportedAt ? new Date(exportedAt) : new Date();
+    if (Number.isNaN(timestamp.getTime())) throw new Error("导出时间无效。");
+
+    return deepFreeze({
+      exportFormatVersion: 1,
+      appVersion: "alpha-3.5",
+      exportedAt: timestamp.toISOString(),
+      recordCounts: cloneJson(countDataRecords(state)),
+      data: data
+    });
+  }
+
+  function serializeDataBackup(backup) {
+    return JSON.stringify(backup, null, 2);
+  }
+
+  function dataBackupFilename(exportedAt) {
+    const timestamp = new Date(exportedAt);
+    if (Number.isNaN(timestamp.getTime())) throw new Error("导出时间无效。");
+    const compact = timestamp.toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
+    return "personal-ai-os-backup-" + compact + ".json";
+  }
+
   function buildMemoryRecords(state) {
     const value = state && typeof state === "object" ? state : {};
     const records = [];
@@ -261,7 +317,12 @@
 
   return Object.freeze({
     RECORD_TYPES: RECORD_TYPES,
+    DATA_COLLECTIONS: DATA_COLLECTIONS,
     buildMemoryRecords: buildMemoryRecords,
-    queryMemoryRecords: queryMemoryRecords
+    queryMemoryRecords: queryMemoryRecords,
+    countDataRecords: countDataRecords,
+    createDataBackup: createDataBackup,
+    serializeDataBackup: serializeDataBackup,
+    dataBackupFilename: dataBackupFilename
   });
 });
