@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
   const storage = window.PersonalAIStorage;
+  const memory = window.PersonalAIMemory;
   const elements = {
     goalForm: document.getElementById("goal-form"),
     goal: document.getElementById("goal"),
@@ -68,12 +69,18 @@ document.addEventListener("DOMContentLoaded", function () {
     noteGoal: document.getElementById("note-goal-input"),
     noteProject: document.getElementById("note-project-input"),
     noteEditorStatus: document.getElementById("note-editor-status"),
+    memorySearch: document.getElementById("memory-search"),
+    memoryType: document.getElementById("memory-type"),
+    memoryOrder: document.getElementById("memory-order"),
+    memoryCount: document.getElementById("memory-count"),
+    memoryRecords: document.getElementById("memory-records"),
     decisionButton: document.getElementById("decision-button"),
     decision: document.getElementById("decision"),
     decisions: document.getElementById("decisions")
   };
 
   const todayKey = storage.getLocalDate();
+  let currentState = null;
 
   function setStatus(element, message, isError) {
     element.textContent = message || "";
@@ -127,6 +134,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function captureSourceLabel(source) {
     return { manual: "手动", voice: "语音", web_clip: "网页剪藏", ai: "AI", import: "导入" }[source] || "手动";
+  }
+
+  function memoryTypeLabel(type) {
+    return { goal: "目标", capture: "捕获", task: "任务", note: "笔记", decision: "决策", review: "复盘" }[type] || "记录";
+  }
+
+  function memoryStatusLabel(status) {
+    return {
+      active: "进行中",
+      inbox: "待整理",
+      converted: "已转换",
+      archived: "已归档",
+      todo: "待开始",
+      in_progress: "进行中",
+      completed: "已完成",
+      cancelled: "已取消",
+      open: "待决定",
+      reviewed: "已复盘",
+      saved: "已保存"
+    }[status] || status || "状态未记录";
   }
 
   function createButton(label, onClick, className) {
@@ -327,6 +354,60 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function renderMemoryCenter(state) {
+    const allRecords = memory.buildMemoryRecords(state);
+    const records = memory.queryMemoryRecords(allRecords, {
+      query: elements.memorySearch.value,
+      type: elements.memoryType.value,
+      order: elements.memoryOrder.value
+    });
+
+    elements.memoryCount.textContent = "显示 " + records.length + " / 共 " + allRecords.length + " 条";
+    clearChildren(elements.memoryRecords);
+    if (!records.length) {
+      elements.memoryRecords.appendChild(emptyState("没有符合当前条件的记录。清除搜索或选择全部记录后可查看完整记忆。"));
+      return;
+    }
+
+    records.forEach(function (record) {
+      const item = document.createElement("article");
+      item.className = "record-item memory-record";
+      item.dataset.memoryType = record.type;
+      item.dataset.memoryStatus = record.status || "unknown";
+
+      const body = document.createElement("div");
+      const heading = document.createElement("div");
+      heading.className = "memory-record-heading";
+      const type = document.createElement("span");
+      type.className = "memory-type";
+      type.textContent = memoryTypeLabel(record.type);
+      heading.appendChild(type);
+      const status = document.createElement("span");
+      status.className = "badge memory-status";
+      status.textContent = memoryStatusLabel(record.status);
+      heading.appendChild(status);
+      body.appendChild(heading);
+
+      const title = document.createElement("h3");
+      title.textContent = record.title;
+      body.appendChild(title);
+      if (record.summary && record.summary !== record.title) {
+        const summary = document.createElement("p");
+        summary.className = "memory-summary";
+        summary.textContent = record.summary;
+        body.appendChild(summary);
+      }
+      appendTagList(body, record.tags);
+
+      const meta = document.createElement("p");
+      meta.className = "meta";
+      meta.textContent = record.sortAt ? "记录时间 " + formatDate(record.sortAt) : "记录时间未设置";
+      body.appendChild(meta);
+      item.appendChild(body);
+      elements.memoryRecords.appendChild(item);
+    });
+  }
+
   function renderDecisions(state) {
     clearChildren(elements.decisions);
     state.decisions.slice().reverse().forEach(function (decision) {
@@ -434,6 +515,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function render() {
     const state = storage.getState();
+    currentState = state;
     const tasks = state.tasks.slice().sort(function (a, b) { return b.updatedAt.localeCompare(a.updatedAt); });
     const goal = state.goals[0];
     const todayTasks = tasks.filter(isTodayTask);
@@ -462,6 +544,7 @@ document.addEventListener("DOMContentLoaded", function () {
     renderReview(todayCompleted, todayTasks, todayCaptures);
     renderNoteTagFilter(state.notes);
     renderNotes(state);
+    renderMemoryCenter(state);
     renderDecisions(state);
 
     if (!openCaptures.length && !state.captures.length) setStatus(elements.captureStatus, "", false);
@@ -572,6 +655,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
   elements.noteSearch.addEventListener("input", render);
   elements.noteTagFilter.addEventListener("change", render);
+  elements.memorySearch.addEventListener("input", function () { renderMemoryCenter(currentState); });
+  elements.memoryType.addEventListener("change", function () { renderMemoryCenter(currentState); });
+  elements.memoryOrder.addEventListener("change", function () { renderMemoryCenter(currentState); });
 
   document.querySelectorAll("[data-close-dialog]").forEach(function (button) {
     button.addEventListener("click", function () {

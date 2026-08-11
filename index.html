@@ -11,6 +11,7 @@
 <header class="page-header">
 <h1>Personal AI OS</h1>
 <p class="sub">捕获想法，完成下一步。</p>
+<a class="memory-entry" href="#memory-center">查看个人记忆</a>
 </header>
 
 <section aria-labelledby="dashboard-title">
@@ -99,6 +100,19 @@
 <button type="submit">保存明日主线</button>
 </form>
 <p id="review-status" class="status" aria-live="polite"></p>
+</section>
+
+<section id="memory-center" aria-labelledby="memory-title">
+<div class="section-heading">
+<div><h2 id="memory-title">个人记忆</h2><p class="muted memory-intro">全部记录保存在本地，可随时搜索和回顾。</p></div>
+<span id="memory-count" class="muted" aria-live="polite"></span>
+</div>
+<div class="memory-controls">
+<label for="memory-search">搜索全部记录<input id="memory-search" type="search" placeholder="搜索标题、正文、标签或状态"></label>
+<label for="memory-type">记录类型<select id="memory-type"><option value="">全部记录</option><option value="goal">目标</option><option value="capture">捕获</option><option value="task">任务</option><option value="note">笔记</option><option value="decision">决策</option><option value="review">复盘</option></select></label>
+<label for="memory-order">时间排序<select id="memory-order"><option value="newest">最新在前</option><option value="oldest">最早在前</option></select></label>
+</div>
+<div id="memory-records" class="record-list" aria-live="polite"></div>
 </section>
 
 <section class="secondary-section" aria-labelledby="advisor-title">
@@ -198,6 +212,7 @@
 </form>
 </dialog>
 <script src="storage.js"></script>
+<script src="memory.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

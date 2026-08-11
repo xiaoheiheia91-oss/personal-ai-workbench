@@ -197,10 +197,52 @@
   }
 
   function compareRecords(left, right) {
-    const timeDifference = sortTime(right.sortAt) - sortTime(left.sortAt);
+    const leftTime = sortTime(left.sortAt);
+    const rightTime = sortTime(right.sortAt);
+    if (!leftTime && rightTime) return 1;
+    if (leftTime && !rightTime) return -1;
+    const timeDifference = rightTime - leftTime;
     if (timeDifference) return timeDifference;
     const typeDifference = left.type.localeCompare(right.type);
     return typeDifference || left.id.localeCompare(right.id);
+  }
+
+  function searchableText(record) {
+    const detailValues = Object.keys(record.details || {}).map(function (key) {
+      const value = record.details[key];
+      return Array.isArray(value) ? value.join(" ") : asText(value);
+    });
+    return [
+      record.type,
+      record.title,
+      record.content,
+      record.status,
+      record.source,
+      record.relatedGoal,
+      record.relatedProject,
+      record.sourceCaptureId,
+      record.tags.join(" ")
+    ].concat(detailValues).join(" ").toLocaleLowerCase();
+  }
+
+  function queryMemoryRecords(records, options) {
+    const values = options || {};
+    const type = RECORD_TYPES.includes(values.type) ? values.type : null;
+    const terms = asText(values.query).trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const order = values.order === "oldest" ? "oldest" : "newest";
+    const result = asArray(records).filter(function (record) {
+      if (!record || (type && record.type !== type)) return false;
+      if (!terms.length) return true;
+      const text = searchableText(record);
+      return terms.every(function (term) { return text.includes(term); });
+    }).slice().sort(compareRecords);
+
+    if (order === "oldest") {
+      const dated = result.filter(function (record) { return sortTime(record.sortAt); }).reverse();
+      const undated = result.filter(function (record) { return !sortTime(record.sortAt); });
+      return Object.freeze(dated.concat(undated));
+    }
+    return Object.freeze(result);
   }
 
   function buildMemoryRecords(state) {
@@ -219,6 +261,7 @@
 
   return Object.freeze({
     RECORD_TYPES: RECORD_TYPES,
-    buildMemoryRecords: buildMemoryRecords
+    buildMemoryRecords: buildMemoryRecords,
+    queryMemoryRecords: queryMemoryRecords
   });
 });

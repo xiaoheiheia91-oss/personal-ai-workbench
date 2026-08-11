@@ -21,6 +21,16 @@ function fixtureState() {
       relatedGoal: "goal-1",
       relatedProject: "personal-ai-os",
       context: { convertedTaskId: null, convertedNoteId: null }
+    }, {
+      id: "capture-2",
+      content: "已经转换的捕获",
+      category: "task",
+      status: "converted",
+      source: "manual",
+      createdAt: "2026-08-10T08:30:00.000Z",
+      relatedGoal: null,
+      relatedProject: null,
+      context: { convertedTaskId: "task-2", convertedNoteId: null }
     }],
     tasks: [{
       id: "task-1",
@@ -35,6 +45,19 @@ function fixtureState() {
       todayDate: null,
       sourceCaptureId: "capture-1",
       context: { relatedGoal: "goal-1", relatedProject: "personal-ai-os" }
+    }, {
+      id: "task-2",
+      title: "完成记录中心",
+      priority: "medium",
+      status: "completed",
+      createdAt: "2026-08-11T09:00:00.000Z",
+      updatedAt: "2026-08-12T09:00:00.000Z",
+      completedAt: "2026-08-12T09:00:00.000Z",
+      dueDate: null,
+      today: true,
+      todayDate: "2026-08-12",
+      sourceCaptureId: "capture-2",
+      context: { relatedGoal: null, relatedProject: null }
     }],
     notes: [{
       id: "note-1",
@@ -77,11 +100,31 @@ test("projects every Alpha 3 record type without filtering statuses", function (
   const memory = require(memoryPath);
   const records = memory.buildMemoryRecords(fixtureState());
 
-  assert.equal(records.length, 6);
+  assert.equal(records.length, 8);
   assert.deepEqual(new Set(records.map(function (record) { return record.type; })), new Set(memory.RECORD_TYPES));
   assert.equal(records.find(function (record) { return record.id === "note-1"; }).status, "archived");
   assert.equal(records.find(function (record) { return record.id === "task-1"; }).status, "cancelled");
+  assert.equal(records.find(function (record) { return record.id === "task-2"; }).status, "completed");
   assert.equal(records.find(function (record) { return record.id === "capture-1"; }).status, "archived");
+  assert.equal(records.find(function (record) { return record.id === "capture-2"; }).status, "converted");
+});
+
+test("queries records locally by text, type, and time order without excluding statuses", function () {
+  const memory = require(memoryPath);
+  const records = memory.buildMemoryRecords(fixtureState());
+
+  assert.deepEqual(memory.queryMemoryRecords(records).map(function (record) { return record.id; }), records.map(function (record) { return record.id; }));
+  assert.deepEqual(memory.queryMemoryRecords(records, { type: "capture" }).map(function (record) { return record.id; }).sort(), ["capture-1", "capture-2"]);
+  assert.deepEqual(memory.queryMemoryRecords(records, { query: "local-first" }).map(function (record) { return record.id; }), ["note-1"]);
+  assert.deepEqual(memory.queryMemoryRecords(records, { query: "cancelled" }).map(function (record) { return record.id; }), ["task-1"]);
+  assert.deepEqual(memory.queryMemoryRecords(records, { query: "converted" }).map(function (record) { return record.id; }), ["capture-2"]);
+
+  const newest = memory.queryMemoryRecords(records, { order: "newest" });
+  const oldest = memory.queryMemoryRecords(records, { order: "oldest" });
+  assert.equal(newest[0].id, "review-1");
+  assert.equal(oldest[0].id, "capture-1");
+  assert.equal(newest[newest.length - 1].id, "goal-1");
+  assert.equal(oldest[oldest.length - 1].id, "goal-1");
 });
 
 test("returns detached, frozen MemoryRecords and preserves the Schema v3 input", function () {
