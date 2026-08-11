@@ -62,13 +62,19 @@
 <button type="submit">保存到捕获箱</button>
 </form>
 <p id="capture-status" class="status" aria-live="polite"></p>
+<div class="lifecycle-controls">
+<label for="capture-status-filter">状态筛选<select id="capture-status-filter"><option value="">全部状态</option><option value="inbox">待整理</option><option value="converted">已转换</option><option value="archived">已归档</option></select></label>
+</div>
 <div id="captures" class="record-list"></div>
 </section>
 
 <section aria-labelledby="task-title">
 <div class="section-heading">
 <h2 id="task-title">任务</h2>
-<span class="muted">今日 / 待处理 / 已完成</span>
+<span class="muted">全部状态均可回顾</span>
+</div>
+<div class="lifecycle-controls">
+<label for="task-status-filter">状态筛选<select id="task-status-filter"><option value="">全部状态</option><option value="active">未结束（全部）</option><option value="todo">待开始</option><option value="in_progress">进行中</option><option value="completed">已完成</option><option value="cancelled">已取消</option></select></label>
 </div>
 <div class="task-group">
 <h3>今日任务</h3>
@@ -81,6 +87,10 @@
 <div class="task-group">
 <h3>已完成任务</h3>
 <div id="completed-tasks" class="record-list"></div>
+</div>
+<div class="task-group">
+<h3>已取消任务</h3>
+<div id="cancelled-tasks" class="record-list"></div>
 </div>
 </section>
 
@@ -100,6 +110,11 @@
 <button type="submit">保存明日主线</button>
 </form>
 <p id="review-status" class="status" aria-live="polite"></p>
+<div class="section-heading history-heading">
+<h3>复盘历史</h3>
+<label for="review-range-filter">记录范围<select id="review-range-filter"><option value="">全部历史</option><option value="today">仅今天</option></select></label>
+</div>
+<div id="review-history" class="record-list"></div>
 </section>
 
 <section id="memory-center" aria-labelledby="memory-title">
@@ -133,15 +148,16 @@
 <h2 id="note-title">知识库</h2>
 <button id="note-new-button" type="button">新建笔记</button>
 </div>
-<div class="knowledge-controls">
+<div class="knowledge-controls lifecycle-note-controls">
 <label for="note-search">搜索笔记<input id="note-search" type="search" placeholder="搜索标题、正文或标签"></label>
 <label for="note-tag-filter">标签筛选<select id="note-tag-filter"><option value="">全部标签</option></select></label>
+<label for="note-status-filter">状态筛选<select id="note-status-filter"><option value="">全部状态</option><option value="active">使用中</option><option value="archived">已归档</option></select></label>
 </div>
 <div id="notes"></div>
 </section>
 
 <section class="secondary-section" aria-labelledby="decision-title">
-<h2>决策中心</h2>
+<div class="section-heading"><h2 id="decision-title">决策中心</h2><label for="decision-status-filter">状态筛选<select id="decision-status-filter"><option value="">全部状态</option><option value="open">待复盘</option><option value="reviewed">已复盘</option></select></label></div>
 <label for="decision">记录你的决定、理由、风险</label>
 <textarea id="decision" placeholder="记录你的决定、理由、风险"></textarea>
 <button id="decision-button" type="button">记录</button>

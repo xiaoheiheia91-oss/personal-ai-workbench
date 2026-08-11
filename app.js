@@ -10,11 +10,14 @@ document.addEventListener("DOMContentLoaded", function () {
     captureCategory: document.getElementById("capture-category"),
     captureSource: document.getElementById("capture-source"),
     captureStatus: document.getElementById("capture-status"),
+    captureStatusFilter: document.getElementById("capture-status-filter"),
     captures: document.getElementById("captures"),
     dashboardTodayTasks: document.getElementById("today-tasks"),
     todayTasks: document.getElementById("today-tasks-list"),
     pendingTasks: document.getElementById("pending-tasks"),
     completedTasks: document.getElementById("completed-tasks"),
+    cancelledTasks: document.getElementById("cancelled-tasks"),
+    taskStatusFilter: document.getElementById("task-status-filter"),
     recentRecords: document.getElementById("recent-records"),
     dashboardNotes: document.getElementById("dashboard-notes"),
     todoCount: document.getElementById("todo-count"),
@@ -28,6 +31,8 @@ document.addEventListener("DOMContentLoaded", function () {
     reviewForm: document.getElementById("review-form"),
     tomorrowGoal: document.getElementById("tomorrow-goal"),
     reviewStatus: document.getElementById("review-status"),
+    reviewRangeFilter: document.getElementById("review-range-filter"),
+    reviewHistory: document.getElementById("review-history"),
     taskDialog: document.getElementById("task-dialog"),
     taskForm: document.getElementById("task-form"),
     taskId: document.getElementById("task-id"),
@@ -58,6 +63,7 @@ document.addEventListener("DOMContentLoaded", function () {
     reply: document.getElementById("reply"),
     noteSearch: document.getElementById("note-search"),
     noteTagFilter: document.getElementById("note-tag-filter"),
+    noteStatusFilter: document.getElementById("note-status-filter"),
     noteNewButton: document.getElementById("note-new-button"),
     notes: document.getElementById("notes"),
     noteDialog: document.getElementById("note-dialog"),
@@ -79,6 +85,7 @@ document.addEventListener("DOMContentLoaded", function () {
     memoryExportStatus: document.getElementById("memory-export-status"),
     decisionButton: document.getElementById("decision-button"),
     decision: document.getElementById("decision"),
+    decisionStatusFilter: document.getElementById("decision-status-filter"),
     decisions: document.getElementById("decisions")
   };
 
@@ -170,7 +177,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function createTaskElement(task) {
     const item = document.createElement("article");
-    item.className = "record-item task-item" + (task.status === "completed" ? " completed" : "");
+    item.className = "record-item task-item " + task.status;
     const body = document.createElement("div");
     const title = document.createElement("h3");
     title.textContent = task.title;
@@ -204,12 +211,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function renderCaptures(captures) {
     clearChildren(elements.captures);
-    if (!captures.length) {
-      elements.captures.appendChild(emptyState("捕获箱为空。把第一个想法记录下来。"));
+    const selectedStatus = elements.captureStatusFilter.value;
+    const visibleCaptures = captures.filter(function (capture) {
+      return !selectedStatus || capture.status === selectedStatus;
+    });
+    if (!visibleCaptures.length) {
+      elements.captures.appendChild(emptyState(selectedStatus ? "没有符合当前状态的捕获记录。" : "捕获箱为空。把第一个想法记录下来。"));
       return;
     }
 
-    captures.slice().sort(function (a, b) { return b.createdAt.localeCompare(a.createdAt); }).forEach(function (capture) {
+    visibleCaptures.slice().sort(function (a, b) { return b.createdAt.localeCompare(a.createdAt); }).forEach(function (capture) {
       const item = document.createElement("article");
       item.className = "record-item";
       const body = document.createElement("div");
@@ -219,7 +230,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const meta = document.createElement("p");
       meta.className = "meta";
       const category = { idea: "想法", task: "任务", note: "笔记", decision: "决策", uncategorized: "未分类" }[capture.category] || "未分类";
-      meta.textContent = category + " · " + captureSourceLabel(capture.source) + " · " + formatDate(capture.createdAt);
+      meta.textContent = category + " · " + captureSourceLabel(capture.source) + " · " + memoryStatusLabel(capture.status) + " · " + formatDate(capture.createdAt);
       body.appendChild(meta);
       item.appendChild(body);
       if (capture.status === "inbox") {
@@ -297,20 +308,20 @@ document.addEventListener("DOMContentLoaded", function () {
     clearChildren(elements.notes);
     const keyword = elements.noteSearch.value.trim().toLowerCase();
     const tag = elements.noteTagFilter.value;
+    const selectedStatus = elements.noteStatusFilter.value;
     const notes = state.notes.filter(function (note) {
-      if (note.status === "archived") return false;
       const searchable = (note.title + " " + note.content + " " + note.tags.join(" ")).toLowerCase();
-      return (!keyword || searchable.includes(keyword)) && (!tag || note.tags.includes(tag));
+      return (!keyword || searchable.includes(keyword)) && (!tag || note.tags.includes(tag)) && (!selectedStatus || note.status === selectedStatus);
     }).sort(function (a, b) { return b.updatedAt.localeCompare(a.updatedAt); });
 
     if (!notes.length) {
-      elements.notes.appendChild(emptyState(keyword || tag ? "没有符合条件的笔记。" : "还没有笔记。可以新建笔记或从捕获箱转换。"));
+      elements.notes.appendChild(emptyState(keyword || tag || selectedStatus ? "没有符合条件的笔记。" : "还没有笔记。可以新建笔记或从捕获箱转换。"));
       return;
     }
 
     notes.forEach(function (note) {
       const item = document.createElement("article");
-      item.className = "record-item note-item";
+      item.className = "record-item note-item " + note.status;
       const body = document.createElement("div");
       const title = document.createElement("h3");
       title.textContent = note.title;
@@ -322,19 +333,17 @@ document.addEventListener("DOMContentLoaded", function () {
       appendTagList(body, note.tags);
       const meta = document.createElement("p");
       meta.className = "meta";
-      meta.textContent = "更新于 " + formatDate(note.updatedAt);
+      meta.textContent = memoryStatusLabel(note.status) + " · 更新于 " + formatDate(note.updatedAt);
       body.appendChild(meta);
       item.appendChild(body);
       const actions = document.createElement("div");
       actions.className = "record-actions";
       actions.appendChild(createButton("编辑", function () { openNoteDialog(note); }));
-      actions.appendChild(createButton("归档", function () { storage.archiveNote(note.id); render(); }));
-      actions.appendChild(createButton("删除", function () {
-        if (window.confirm("删除这条笔记？此操作无法恢复。")) {
-          storage.deleteNote(note.id);
-          render();
-        }
-      }));
+      if (note.status === "archived") {
+        actions.appendChild(createButton("恢复使用", function () { storage.restoreNote(note.id); render(); }));
+      } else {
+        actions.appendChild(createButton("归档", function () { storage.archiveNote(note.id); render(); }));
+      }
       item.appendChild(actions);
       elements.notes.appendChild(item);
     });
@@ -342,7 +351,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function renderNoteTagFilter(notes) {
     const selected = elements.noteTagFilter.value;
-    const tags = Array.from(new Set(notes.filter(function (note) { return note.status === "active"; }).flatMap(function (note) { return note.tags; }))).sort();
+    const tags = Array.from(new Set(notes.flatMap(function (note) { return note.tags; }))).sort();
     clearChildren(elements.noteTagFilter);
     const all = document.createElement("option");
     all.value = "";
@@ -435,10 +444,33 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function renderDecisions(state) {
     clearChildren(elements.decisions);
-    state.decisions.slice().reverse().forEach(function (decision) {
-      const item = document.createElement("div");
-      item.className = "item";
-      item.textContent = decision.problem;
+    const selectedStatus = elements.decisionStatusFilter.value;
+    const decisions = state.decisions.filter(function (decision) {
+      const status = decision.result || decision.context && decision.context.reviewedAt ? "reviewed" : "open";
+      return !selectedStatus || status === selectedStatus;
+    }).slice().reverse();
+    if (!decisions.length) {
+      elements.decisions.appendChild(emptyState(selectedStatus ? "没有符合当前状态的决策记录。" : "还没有决策记录。"));
+      return;
+    }
+    decisions.forEach(function (decision) {
+      const item = document.createElement("article");
+      item.className = "record-item decision-item";
+      const body = document.createElement("div");
+      const title = document.createElement("h3");
+      title.textContent = decision.problem;
+      body.appendChild(title);
+      [decision.choice && "选择：" + decision.choice, decision.reason && "理由：" + decision.reason, decision.risk && "风险：" + decision.risk, decision.result && "结果：" + decision.result].filter(Boolean).forEach(function (text) {
+        const detail = document.createElement("p");
+        detail.textContent = text;
+        body.appendChild(detail);
+      });
+      const meta = document.createElement("p");
+      meta.className = "meta";
+      const reviewed = decision.result || decision.context && decision.context.reviewedAt;
+      meta.textContent = (reviewed ? "已复盘" : "待复盘") + (decision.context && decision.context.createdAt ? " · " + formatDate(decision.context.createdAt) : "");
+      body.appendChild(meta);
+      item.appendChild(body);
       elements.decisions.appendChild(item);
     });
   }
@@ -513,6 +545,35 @@ document.addEventListener("DOMContentLoaded", function () {
     elements.tomorrowGoal.value = review ? review.tomorrowGoal : "";
   }
 
+  function renderReviewHistory(reviews) {
+    clearChildren(elements.reviewHistory);
+    const todayOnly = elements.reviewRangeFilter.value === "today";
+    const visibleReviews = reviews.filter(function (review) { return !todayOnly || review.date === todayKey; }).slice().sort(function (a, b) {
+      return (b.updatedAt || b.date || "").localeCompare(a.updatedAt || a.date || "");
+    });
+    if (!visibleReviews.length) {
+      elements.reviewHistory.appendChild(emptyState(todayOnly ? "今天还没有保存复盘。" : "还没有复盘历史。"));
+      return;
+    }
+    visibleReviews.forEach(function (review) {
+      const item = document.createElement("article");
+      item.className = "record-item review-history-item";
+      const body = document.createElement("div");
+      const title = document.createElement("h3");
+      title.textContent = review.date;
+      body.appendChild(title);
+      const content = document.createElement("p");
+      content.textContent = review.tomorrowGoal || "未填写明日主线";
+      body.appendChild(content);
+      const meta = document.createElement("p");
+      meta.className = "meta";
+      meta.textContent = "已保存 · 更新于 " + formatDate(review.updatedAt || review.createdAt);
+      body.appendChild(meta);
+      item.appendChild(body);
+      elements.reviewHistory.appendChild(item);
+    });
+  }
+
   function openTaskDialog(task) {
     elements.taskId.value = task.id;
     elements.taskTitle.value = task.title || "";
@@ -546,6 +607,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const todayTasks = tasks.filter(isTodayTask);
     const pendingTasks = tasks.filter(function (task) { return isActiveTask(task) && !isTodayTask(task); });
     const completedTasks = tasks.filter(function (task) { return task.status === "completed"; });
+    const cancelledTasks = tasks.filter(function (task) { return task.status === "cancelled"; });
     const todayCompleted = completedTasks.filter(completedToday);
     const todayCaptures = state.captures.filter(createdToday);
     const openCaptures = state.captures.filter(function (capture) { return capture.status === "inbox"; });
@@ -560,13 +622,21 @@ document.addEventListener("DOMContentLoaded", function () {
     elements.noteCount.textContent = String(todayNotes.length);
 
     renderDashboardTasks(todayTasks);
-    renderTaskList(elements.todayTasks, todayTasks, "今天还没有安排任务。可从捕获箱转换并加入今日任务。");
-    renderTaskList(elements.pendingTasks, pendingTasks, "没有待处理任务。");
-    renderTaskList(elements.completedTasks, completedTasks, "还没有已完成任务。");
+    const selectedTaskStatus = elements.taskStatusFilter.value;
+    function matchesTaskFilter(task) {
+      if (!selectedTaskStatus) return true;
+      if (selectedTaskStatus === "active") return isActiveTask(task);
+      return task.status === selectedTaskStatus;
+    }
+    renderTaskList(elements.todayTasks, todayTasks.filter(matchesTaskFilter), "当前筛选下没有今日任务。");
+    renderTaskList(elements.pendingTasks, pendingTasks.filter(matchesTaskFilter), "当前筛选下没有待处理任务。");
+    renderTaskList(elements.completedTasks, completedTasks.filter(matchesTaskFilter), "当前筛选下没有已完成任务。");
+    renderTaskList(elements.cancelledTasks, cancelledTasks.filter(matchesTaskFilter), "当前筛选下没有已取消任务。");
     renderCaptures(state.captures);
     renderRecentRecords(state.captures, completedTasks);
     renderDashboardNotes(recentNotes);
     renderReview(todayCompleted, todayTasks, todayCaptures);
+    renderReviewHistory(state.dailyReviews);
     renderNoteTagFilter(state.notes);
     renderNotes(state);
     renderMemoryCenter(state);
@@ -577,9 +647,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
   elements.goalForm.addEventListener("submit", function (event) {
     event.preventDefault();
-    storage.saveTodayGoal(elements.goal.value);
-    setStatus(elements.goalStatus, elements.goal.value.trim() ? "今日主线已保存。" : "今日主线已清除。", false);
-    render();
+    try {
+      storage.saveTodayGoal(elements.goal.value);
+      setStatus(elements.goalStatus, "今日主线已保存。", false);
+      render();
+    } catch (error) {
+      setStatus(elements.goalStatus, error.message, true);
+    }
   });
 
   elements.captureForm.addEventListener("submit", function (event) {
@@ -680,6 +754,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   elements.noteSearch.addEventListener("input", render);
   elements.noteTagFilter.addEventListener("change", render);
+  elements.noteStatusFilter.addEventListener("change", render);
+  elements.captureStatusFilter.addEventListener("change", render);
+  elements.taskStatusFilter.addEventListener("change", render);
+  elements.reviewRangeFilter.addEventListener("change", render);
+  elements.decisionStatusFilter.addEventListener("change", render);
   elements.memorySearch.addEventListener("input", function () { renderMemoryCenter(currentState); });
   elements.memoryType.addEventListener("change", function () { renderMemoryCenter(currentState); });
   elements.memoryOrder.addEventListener("change", function () { renderMemoryCenter(currentState); });

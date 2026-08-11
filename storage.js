@@ -208,9 +208,8 @@
     const value = title.trim();
     const existing = state.goals[0];
 
-    if (!value) {
-      state.goals = [];
-    } else if (existing) {
+    if (!value) throw new Error("今日主线不能为空，已有记录不会被删除。");
+    if (existing) {
       existing.title = value;
     } else {
       state.goals.push({ id: createId("goal-"), title: value, progress: 0 });
@@ -395,13 +394,8 @@
     return updateNote(noteId, { status: "archived" });
   }
 
-  function deleteNote(noteId) {
-    const state = getState();
-    const index = state.notes.findIndex(function (item) { return item.id === noteId; });
-    if (index === -1) throw new Error("未找到该笔记。");
-    const removed = state.notes.splice(index, 1)[0];
-    saveState(state);
-    return removed;
+  function restoreNote(noteId) {
+    return updateNote(noteId, { status: "active" });
   }
 
   function convertCaptureToNote(captureId, input) {
@@ -565,8 +559,8 @@
     getLocalDate: getLocalDate,
     createNote: createNote,
     updateNote: updateNote,
-    deleteNote: deleteNote,
     archiveNote: archiveNote,
+    restoreNote: restoreNote,
     convertCaptureToNote: convertCaptureToNote,
     archiveCapture: archiveCapture,
     getAIContext: getAIContext,
