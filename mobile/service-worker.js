@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "personal-ai-os-mobile-static-v3";
+const CACHE_NAME = "personal-ai-os-mobile-static-v4";
 const STATIC_ASSETS = [
   "/app/index.html", "/app/style.css", "/app/storage.js", "/app/memory.js",
   "/app/app.js", "/app/pwa-register.js", "/mobile.css", "/manifest.webmanifest", "/version.json",
@@ -28,9 +28,13 @@ self.addEventListener("fetch", function (event) {
   const url = new URL(request.url);
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
 
+  if (request.mode === "navigate") {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   event.respondWith(caches.match(request, { ignoreSearch: true }).then(function (response) {
     if (response) return response;
-    if (request.mode === "navigate") return caches.match("/app/index.html");
     return new Response("Offline resource unavailable.", { status: 503, statusText: "Service Unavailable", headers: { "Content-Type": "text/plain; charset=utf-8" } });
   }));
 });
