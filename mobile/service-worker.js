@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "personal-ai-os-mobile-static-v2";
+const CACHE_NAME = "personal-ai-os-mobile-static-v3";
 const STATIC_ASSETS = [
   "/app/index.html", "/app/style.css", "/app/storage.js", "/app/memory.js",
   "/app/app.js", "/app/pwa-register.js", "/mobile.css", "/manifest.webmanifest", "/version.json",
@@ -8,7 +8,11 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener("install", function (event) {
-  event.waitUntil(caches.open(CACHE_NAME).then(function (cache) { return cache.addAll(STATIC_ASSETS); }));
+  event.waitUntil(caches.open(CACHE_NAME).then(function (cache) {
+    return cache.addAll(STATIC_ASSETS);
+  }).then(function () {
+    return self.skipWaiting();
+  }));
 });
 
 self.addEventListener("activate", function (event) {
