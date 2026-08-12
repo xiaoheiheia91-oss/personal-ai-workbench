@@ -1,10 +1,10 @@
 "use strict";
 
-const CACHE_NAME = "personal-ai-os-mobile-static-v1";
+const CACHE_NAME = "personal-ai-os-mobile-static-v2";
 const STATIC_ASSETS = [
-  "./app/index.html", "./app/style.css", "./app/storage.js", "./app/memory.js",
-  "./app/app.js", "./app/pwa-register.js", "./mobile.css", "./manifest.webmanifest", "./version.json",
-  "./icons/icon.svg", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"
+  "/app/index.html", "/app/style.css", "/app/storage.js", "/app/memory.js",
+  "/app/app.js", "/app/pwa-register.js", "/mobile.css", "/manifest.webmanifest", "/version.json",
+  "/icons/icon.svg", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png"
 ];
 
 self.addEventListener("install", function (event) {
@@ -26,7 +26,7 @@ self.addEventListener("fetch", function (event) {
 
   event.respondWith(caches.match(request, { ignoreSearch: true }).then(function (response) {
     if (response) return response;
-    if (request.mode === "navigate") return caches.match("./app/index.html");
+    if (request.mode === "navigate") return caches.match("/app/index.html");
     return new Response("Offline resource unavailable.", { status: 503, statusText: "Service Unavailable", headers: { "Content-Type": "text/plain; charset=utf-8" } });
   }));
 });
