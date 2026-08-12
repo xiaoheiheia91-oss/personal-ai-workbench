@@ -1,3 +1,42 @@
+(function () {
+  "use strict";
+
+  function formatStartupError(reason) {
+    if (reason && typeof reason === "object") {
+      const name = reason.name ? String(reason.name) + ": " : "";
+      const message = reason.message ? String(reason.message) : String(reason);
+      return name + message;
+    }
+    return String(reason || "未知错误");
+  }
+
+  function showStartupError(reason) {
+    const message = formatStartupError(reason);
+    const render = function () {
+      let notice = document.getElementById("mobile-startup-error");
+      if (!notice) {
+        notice = document.createElement("aside");
+        notice.id = "mobile-startup-error";
+        notice.setAttribute("role", "alert");
+        notice.style.cssText = "position:relative;z-index:2147483647;margin:12px;padding:12px;border:1px solid #ffb7b7;border-radius:6px;background:#3b1720;color:#fff;white-space:pre-wrap;word-break:break-word;font:14px/-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif;";
+        document.body.insertBefore(notice, document.body.firstChild);
+      }
+      notice.textContent = "启动诊断：" + message;
+    };
+
+    if (document.body) render();
+    else document.addEventListener("DOMContentLoaded", render, { once: true });
+  }
+
+  window.addEventListener("error", function (event) {
+    showStartupError(event.error || event.message || "资源加载失败");
+  }, true);
+
+  window.addEventListener("unhandledrejection", function (event) {
+    showStartupError(event.reason);
+  });
+})();
+
 document.addEventListener("DOMContentLoaded", function () {
   const storage = window.PersonalAIStorage;
   const memory = window.PersonalAIMemory;
